@@ -31,6 +31,10 @@ import config
 
 _TIMEOUT = 10  # Sekunden, für alle Netzwerk-Versandwege
 
+# Ergebnis des letzten Versandversuchs (für /api/debug/status). Enthält keine
+# Geheimnisse, nur z. B. "resend:ok" oder die Fehlermeldung der API.
+last_email_result = "noch kein Versand"
+
 
 def _ticket_url(runner) -> str:
     return f"{config.PUBLIC_BASE_URL}/api/ticket/{runner.id}"
@@ -128,25 +132,30 @@ def send_confirmation(runner) -> None:
     (Resend -> SMTP -> Dev-Modus). Fehler werden abgefangen und protokolliert;
     im Fehlerfall wird die Mail zusätzlich lokal abgelegt.
     """
+    global last_email_result
     subject, html, text = build_confirmation_email(runner)
 
     try:
         if config.RESEND_CONFIGURED:
             _send_via_resend(runner.email, subject, html, text)
+            last_email_result = f"resend:ok -> {runner.email}"
             print(f"[email] Resend: Bestätigung an {runner.email} verschickt "
                   f"(Startnummer {runner.bib_number}).")
             return
         if config.EMAIL_CONFIGURED:
             _send_via_smtp(runner.email, subject, html, text)
+            last_email_result = f"smtp:ok -> {runner.email}"
             print(f"[email] SMTP: Bestätigung an {runner.email} verschickt "
                   f"(Startnummer {runner.bib_number}).")
             return
     except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
+        last_email_result = f"FEHLER -> {runner.email}: {e}"
         print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
         _save_dev_email(runner.email, subject, html)
         return
 
     # Nichts konfiguriert -> Dev-Modus.
+    last_email_result = f"dev-modus (kein Versand konfiguriert) -> {runner.email}"
     _save_dev_email(runner.email, subject, html)
 
 

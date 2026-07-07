@@ -249,8 +249,27 @@ def ticket_page(runner_id: str):
 @app.get("/api/qr/{runner_id}.png")
 def qr_image(runner_id: str):
     """QR-Code als PNG -- wird u. a. von der Bestätigungs-E-Mail eingebunden.
-    Kein DB-Zugriff nötig: der QR kodiert einfach die ID aus dem Pfad."""
-    return Response(ticket.qr_png_bytes(runner_id), media_type="image/png")
+    Kodiert die Ticket-Seiten-URL, sodass ein Scan direkt das Ticket öffnet."""
+    return Response(ticket.qr_png_bytes(ticket.qr_target(runner_id)), media_type="image/png")
+
+
+@app.get("/api/debug/status")
+def debug_status():
+    """Kleiner Diagnose-Endpunkt (KEINE Geheimnisse) -- zeigt, welche Dienste
+    konfiguriert sind und wie der letzte E-Mail-Versand ausging."""
+    from config import (
+        RESEND_CONFIGURED, EMAIL_CONFIGURED, DATABASE_IS_SQLITE, PUBLIC_BASE_URL,
+        GOOGLE_WALLET_CONFIGURED, APPLE_WALLET_CONFIGURED,
+    )
+    return {
+        "resend_configured": RESEND_CONFIGURED,
+        "smtp_configured": EMAIL_CONFIGURED,
+        "database_is_sqlite": DATABASE_IS_SQLITE,
+        "public_base_url": PUBLIC_BASE_URL,
+        "google_wallet_configured": GOOGLE_WALLET_CONFIGURED,
+        "apple_wallet_configured": APPLE_WALLET_CONFIGURED,
+        "last_email_result": notifications.last_email_result,
+    }
 
 
 # --------------------------------------------------------------------------

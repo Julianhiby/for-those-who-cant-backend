@@ -17,7 +17,15 @@ from html import escape
 
 import qrcode
 
+import config
 from config import EVENT_NAME
+
+
+def qr_target(runner_id: str) -> str:
+    """Der Inhalt, den der QR-Code kodiert: die Ticket-Seite dieser Person.
+    So öffnet ein Scan (Handy-Kamera ODER Check-in-Scanner) direkt das Ticket --
+    statt nur eine nackte ID anzuzeigen."""
+    return f"{config.PUBLIC_BASE_URL}/api/ticket/{runner_id}"
 
 
 def qr_png_bytes(payload: str) -> bytes:
@@ -36,7 +44,7 @@ def _qr_data_uri(payload: str) -> str:
 
 def render_ticket_html(runner) -> str:
     """Baut die vollständige HTML-Ticket-Seite für eine:n Läufer:in."""
-    qr = _qr_data_uri(runner.id)
+    qr = _qr_data_uri(qr_target(runner.id))
     name = escape(runner.name)
     bib = escape(str(runner.bib_number or "—"))
     fmt = "Solo" if runner.type == "solo" else f"Team: {escape(runner.team_name or '')}"
