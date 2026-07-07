@@ -48,8 +48,14 @@ DATABASE_URL = os.getenv(
 )
 
 # Öffentlich erreichbare Basis-URL (für Links in E-Mails, Tickets, Wallet).
-# Lokal: http://localhost:8000. In Produktion die echte Domain eintragen.
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+# Reihenfolge: explizit gesetzte Variable > von Render automatisch gesetzte
+# RENDER_EXTERNAL_URL > lokaler Standard. So funktionieren die Links auf Render
+# ohne manuelles Eintragen der Domain.
+PUBLIC_BASE_URL = (
+    os.getenv("PUBLIC_BASE_URL")
+    or os.getenv("RENDER_EXTERNAL_URL")
+    or "http://localhost:8000"
+).rstrip("/")
 
 
 # --------------------------------------------------------------------------

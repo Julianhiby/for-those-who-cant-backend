@@ -1,0 +1,37 @@
+# Render-Blueprint für "For Those Who Can't".
+#
+# Damit deployst du das Backend + die Website in einem Rutsch als kostenlosen
+# Web-Service. Anleitung: siehe README.md, Abschnitt "Deployment auf Render".
+#
+# Hinweis zum kostenlosen Plan:
+#  - Der Dienst "schläft" nach ~15 Min ohne Zugriff ein; der erste Aufruf danach
+#    dauert dann 30-50 Sekunden (danach wieder schnell). Das ist normal.
+#  - Die SQLite-Datenbank liegt auf einem nicht-dauerhaften Dateisystem, d. h.
+#    Anmeldungen können bei einem Neustart/Deploy verloren gehen. Für den ersten
+#    Test völlig ok. Für den echten Betrieb später auf eine (kostenlose) Render-
+#    Postgres-Datenbank umstellen -> einfach DATABASE_URL als Umgebungsvariable
+#    setzen, der Code muss nicht geändert werden.
+
+services:
+  - type: web
+    name: for-those-who-cant-backend
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app:app --app-dir backend --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: EVENT_NAME
+        value: "For Those Who Can't"
+      # Rundenlänge in km (die Website spricht von 5,0-km-Runden).
+      - key: LAP_DISTANCE_KM
+        value: "5.0"
+      # PUBLIC_BASE_URL wird nicht gesetzt -> der Code nutzt automatisch die von
+      # Render bereitgestellte RENDER_EXTERNAL_URL (die echte https-Adresse).
+      #
+      # E-Mail-Versand: erst aktiv, wenn du hier SMTP_* Variablen einträgst
+      # (siehe .env.example). Ohne sie werden Anmeldungen zwar gespeichert, aber
+      # es wird keine Bestätigungsmail verschickt.

@@ -112,13 +112,38 @@ Siehe [`.env.example`](.env.example) für die vollständige Liste.
 > ⚠️ Zertifikate, Schlüssel und die `.env` gehören **niemals** ins Git-Repo —
 > die `.gitignore` schließt sie bereits aus.
 
-## Deployment
+## Deployment auf Render (kostenlose öffentliche Test-URL)
 
-Als ASGI-App deploybar auf z. B. [Render](https://render.com) oder
-[Railway](https://railway.app):
+Im Projekt liegt eine fertige [`render.yaml`](render.yaml) — damit brauchst du
+nur zu klicken, nichts zu konfigurieren:
 
-- **Start-Befehl:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
-  (Arbeitsverzeichnis: `backend/`)
-- **Umgebungsvariablen** im Hosting-Dashboard setzen (statt `.env`).
-- Für persistente Daten in Produktion eine Postgres-Datenbank verbinden
-  (`DATABASE_URL`).
+1. Kostenloses Konto anlegen auf [render.com](https://render.com) („Get Started",
+   am einfachsten mit dem GitHub-Konto anmelden).
+2. Oben rechts **New +** → **Blueprint**.
+3. Das Repository **`for-those-who-cant-backend`** auswählen (ggf. Render einmal
+   den Zugriff auf dein GitHub erlauben).
+4. Render liest `render.yaml`, zeigt den Dienst **for-those-who-cant-backend** an
+   → **Apply** / **Create** klicken.
+5. Der erste Build dauert 2–4 Minuten. Danach steht deine öffentliche Adresse
+   oben im Dashboard, etwa:
+   **`https://for-those-who-cant-backend.onrender.com`**
+
+Diese URL kannst du teilen — die Website, Anmeldung, Tickets und Live-Daten
+laufen dann für alle im Internet.
+
+**Gut zu wissen (kostenloser Plan):**
+- Der Dienst schläft nach ~15 Min ohne Zugriff ein; der **erste** Aufruf danach
+  dauert 30–50 Sek. (Ladebildschirm), danach wieder schnell.
+- Die SQLite-Datenbank ist **nicht dauerhaft** — bei einem Neustart/Deploy können
+  Anmeldungen verloren gehen. Für erste Tests ok. Für den echten Betrieb in
+  Render eine kostenlose **Postgres**-Datenbank anlegen und deren
+  `DATABASE_URL` als Umgebungsvariable eintragen (Code bleibt unverändert).
+
+**Echte Bestätigungs-E-Mails aktivieren:** im Render-Dashboard unter
+*Environment* die `SMTP_*`-Variablen setzen (siehe [`.env.example`](.env.example),
+z. B. Gmail-App-Passwort). Ohne sie werden Anmeldungen gespeichert, aber keine
+Mails verschickt.
+
+> Alternativ manuell (ohne Blueprint): **New + → Web Service**, Repo wählen,
+> Build `pip install -r requirements.txt`, Start
+> `uvicorn app:app --app-dir backend --host 0.0.0.0 --port $PORT`.
