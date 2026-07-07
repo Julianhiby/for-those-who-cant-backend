@@ -27,8 +27,7 @@ from sqlmodel import SQLModel, Session, create_engine, select
 
 from config import DATABASE_URL, LAP_DISTANCE_KM
 from models import Runner, Sponsor, LapEvent
-import apple_wallet
-import google_wallet
+from wallet import apple_wallet, google_wallet
 
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 

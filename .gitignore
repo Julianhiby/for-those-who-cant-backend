@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtuelle Umgebung
+.venv/
+venv/
+env/
+
+# Konfiguration & Geheimnisse -- NIEMALS ins Repo!
+.env
+*.p12
+*.pem
+*.key
+*.mobileprovision
+service-account*.json
+
+# Datenbank (lokale SQLite-Datei)
+*.db
+database.db
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

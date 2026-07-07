@@ -1,0 +1,16 @@
+# Web-Framework + ASGI-Server
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Datenbank (SQLModel = SQLAlchemy + Pydantic)
+sqlmodel>=0.0.16
+
+# E-Mail-Validierung für pydantic EmailStr
+email-validator>=2.0
+
+# Konfiguration aus .env laden
+python-dotenv>=1.0
+
+# Google Wallet: JWT signieren (RS256 braucht 'cryptography')
+PyJWT>=2.8
+cryptography>=42.0
