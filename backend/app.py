@@ -20,7 +20,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
+import secrets
+
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -304,6 +306,92 @@ def wallet_google(runner_id: str):
         except RuntimeError as e:
             raise HTTPException(501, str(e))
         return RedirectResponse(url)
+
+
+# --------------------------------------------------------------------------
+# Admin: Datenbank zurücksetzen (passwortgeschützt)
+# --------------------------------------------------------------------------
+
+@app.post("/api/admin/reset")
+def admin_reset(x_admin_token: str = Header(default="")):
+    """Löscht ALLE Anmeldungen, Sponsoren und Runden. Nur mit korrektem
+    Admin-Passwort (ADMIN_TOKEN). Ist kein Passwort gesetzt, ist die Funktion
+    komplett deaktiviert."""
+    from config import ADMIN_TOKEN
+    if not ADMIN_TOKEN:
+        raise HTTPException(403, "Zurücksetzen ist nicht konfiguriert (ADMIN_TOKEN fehlt).")
+    if not secrets.compare_digest(x_admin_token or "", ADMIN_TOKEN):
+        raise HTTPException(401, "Falsches Admin-Passwort.")
+
+    with Session(engine) as session:
+        laps = session.exec(select(LapEvent)).all()
+        sponsors = session.exec(select(Sponsor)).all()
+        runners = session.exec(select(Runner)).all()
+        for row in laps + sponsors + runners:
+            session.delete(row)
+        session.commit()
+
+    return {"ok": True, "deleted": {
+        "runners": len(runners), "sponsors": len(sponsors), "laps": len(laps),
+    }}
+
+
+@app.get("/api/admin", response_class=HTMLResponse)
+def admin_page():
+    """Kleine geschützte Admin-Seite mit dem Zurücksetzen-Knopf."""
+    return HTMLResponse(_ADMIN_HTML)
+
+
+_ADMIN_HTML = """<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · For Those Who Can't</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Inter,sans-serif;background:#100E1A;color:#EDE8DD;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;}
+  .card{background:#1a1730;border:1px solid rgba(237,232,221,.14);border-radius:18px;
+        padding:32px;max-width:420px;width:100%;}
+  h1{font-size:1.2rem;margin:0 0 6px;}
+  p{color:#9a94a8;font-size:.9rem;margin:0 0 20px;}
+  label{display:block;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+        color:#9a94a8;margin-bottom:6px;}
+  input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(237,232,221,.2);
+        background:#100E1A;color:#EDE8DD;font-size:1rem;box-sizing:border-box;margin-bottom:16px;}
+  button{width:100%;padding:13px;border:0;border-radius:999px;font-weight:700;font-size:.95rem;
+         cursor:pointer;background:#c0392b;color:#fff;}
+  button:disabled{opacity:.5;cursor:default;}
+  .msg{margin-top:16px;font-size:.9rem;line-height:1.5;display:none;}
+  .msg.show{display:block;}
+  .ok{color:#4ade80;} .err{color:#f87171;}
+</style></head><body>
+  <div class="card">
+    <h1>Datenbank zurücksetzen</h1>
+    <p>Löscht <strong>alle</strong> Anmeldungen, Sponsoren und Runden — unwiderruflich.
+       Nur für den Übergang von Test zu echtem Betrieb gedacht.</p>
+    <label for="token">Admin-Passwort</label>
+    <input type="password" id="token" placeholder="ADMIN_TOKEN" autocomplete="off">
+    <button id="btn">Alle Anmeldungen löschen</button>
+    <div class="msg" id="msg"></div>
+  </div>
+<script>
+  const btn=document.getElementById('btn'), msg=document.getElementById('msg');
+  btn.addEventListener('click', async ()=>{
+    const token=document.getElementById('token').value.trim();
+    if(!token){ show('Bitte Admin-Passwort eingeben.','err'); return; }
+    if(!confirm('Wirklich ALLE Anmeldungen unwiderruflich löschen?')) return;
+    btn.disabled=true; btn.textContent='Wird gelöscht …';
+    try{
+      const res=await fetch('/api/admin/reset',{method:'POST',headers:{'X-Admin-Token':token}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.detail||('Fehler '+res.status));
+      const d=data.deleted;
+      show('✓ Zurückgesetzt: '+d.runners+' Anmeldungen, '+d.sponsors+' Sponsoren, '+d.laps+' Runden gelöscht.','ok');
+    }catch(e){ show('Fehlgeschlagen: '+e.message,'err'); }
+    btn.disabled=false; btn.textContent='Alle Anmeldungen löschen';
+  });
+  function show(t,c){ msg.textContent=t; msg.className='msg show '+c; }
+</script>
+</body></html>"""
 
 
 @app.get("/api/health")

@@ -40,6 +40,11 @@ EVENT_NAME = os.getenv("EVENT_NAME", "For Those Who Can't")
 # Länge einer Runde in Kilometern (für die km-Anzeige im Leaderboard).
 LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "1.0"))
 
+# Admin-Passwort für die Zurücksetzen-Funktion (/api/admin). Ist es leer, ist
+# das Zurücksetzen komplett deaktiviert -- so kann niemand versehentlich oder
+# böswillig die Daten löschen.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
 # Datenbank. Standard: lokale SQLite-Datei. Für Produktion z. B. Neon/Postgres:
 #   postgresql://user:pass@host/dbname?sslmode=require
 DATABASE_URL = os.getenv(
