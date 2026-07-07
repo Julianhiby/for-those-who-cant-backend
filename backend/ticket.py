@@ -20,12 +20,17 @@ import qrcode
 from config import EVENT_NAME
 
 
-def _qr_data_uri(payload: str) -> str:
-    """Erzeugt einen QR-Code und gibt ihn als 'data:image/png;base64,...' zurück."""
+def qr_png_bytes(payload: str) -> bytes:
+    """Erzeugt einen QR-Code und gibt ihn als PNG-Bytes zurück."""
     img = qrcode.make(payload, box_size=8, border=2)
     buffer = BytesIO()
     img.save(buffer, format="PNG")
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return buffer.getvalue()
+
+
+def _qr_data_uri(payload: str) -> str:
+    """Erzeugt einen QR-Code und gibt ihn als 'data:image/png;base64,...' zurück."""
+    encoded = base64.b64encode(qr_png_bytes(payload)).decode("ascii")
     return f"data:image/png;base64,{encoded}"
 
 

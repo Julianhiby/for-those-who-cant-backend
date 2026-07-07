@@ -1,76 +1,105 @@
 """
-E-Mail-Versand: Anmeldebestätigung mit Ticket-Link.
+E-Mail-Versand: Anmeldebestätigung mit QR-Ticket.
 
 Zwei Betriebsarten:
   1) SMTP konfiguriert (config.EMAIL_CONFIGURED) -> echte E-Mail wird verschickt.
+     Der QR-Code wird als *inline*-Bild (CID) angehängt -- so zeigen ihn Gmail,
+     Apple Mail & Co. zuverlässig an (data-URIs werden in E-Mails oft blockiert).
   2) Nicht konfiguriert -> DEV-MODUS: die E-Mail wird NICHT verschickt, sondern
-     als HTML-Datei unter backend/dev_emails/ gespeichert und in der Konsole
-     protokolliert. So kannst du den kompletten Ablauf testen, ohne einen
-     E-Mail-Anbieter einzurichten.
+     als HTML-Datei unter backend/dev_emails/ gespeichert (QR als data-URI, damit
+     die Datei beim Öffnen im Browser sofort den Code zeigt). Ideal zum Testen
+     ohne E-Mail-Anbieter.
 
-Der Versand wird bewusst "best effort" gehalten: schlägt er fehl, wird nur eine
-Warnung protokolliert -- eine Anmeldung soll NICHT scheitern, nur weil der
-Mailserver gerade nicht erreichbar ist.
+Der Versand ist bewusst "best effort": schlägt er fehl, wird nur eine Warnung
+protokolliert -- eine Anmeldung soll NICHT scheitern, nur weil der Mailserver
+gerade nicht erreichbar ist.
 """
 
+import base64
 import smtplib
 import ssl
 from datetime import datetime
 from email.message import EmailMessage
+from email.utils import make_msgid
 from html import escape
 
 import config
+import ticket
 
 
 def _ticket_url(runner) -> str:
     return f"{config.PUBLIC_BASE_URL}/api/ticket/{runner.id}"
 
 
-def _google_wallet_url(runner) -> str:
-    return f"{config.PUBLIC_BASE_URL}/api/wallet/google/{runner.id}"
+def _button(href: str, label: str) -> str:
+    """Ein gestylter Button (als <a>) im Event-Look."""
+    return (
+        f'<a href="{href}" style="display:inline-block;background:#E7B23E;'
+        f'color:#100E1A;text-decoration:none;font-weight:700;padding:12px 22px;'
+        f'border-radius:999px;margin:6px 8px 6px 0;font-size:0.95rem;">{label}</a>'
+    )
 
 
-def build_confirmation_email(runner) -> tuple[str, str, str]:
-    """Gibt (Betreff, HTML-Text, Plain-Text) für die Bestätigungsmail zurück."""
+def build_confirmation_email(runner, qr_src: str) -> tuple[str, str, str]:
+    """
+    Gibt (Betreff, HTML-Text, Plain-Text) für die Bestätigungsmail zurück.
+
+    `qr_src` ist die Bildquelle für den eingebetteten QR-Code -- beim echten
+    Versand "cid:...", im Dev-Modus eine data-URI.
+    """
     name = escape(runner.name)
     bib = escape(str(runner.bib_number or "—"))
     ticket_url = _ticket_url(runner)
-    google_url = _google_wallet_url(runner)
     event = escape(config.EVENT_NAME)
 
     subject = f"Deine Anmeldung für {config.EVENT_NAME} · Startnummer {bib}"
 
-    # Apple-Wallet-Zeile nur zeigen, wenn tatsächlich konfiguriert.
-    apple_line_html = ""
-    apple_line_text = ""
+    # Buttons: Ticket-Seite immer, Wallet-Buttons nur wenn tatsächlich eingerichtet.
+    buttons = [_button(ticket_url, "🎟️ Startticket mit QR öffnen")]
+    text_links = [f"- Startticket (QR-Seite): {ticket_url}"]
+
+    if config.GOOGLE_WALLET_CONFIGURED:
+        google_url = f"{config.PUBLIC_BASE_URL}/api/wallet/google/{runner.id}"
+        buttons.append(_button(google_url, "🤖 Zu Google Wallet"))
+        text_links.append(f"- Google Wallet: {google_url}")
+
     if config.APPLE_WALLET_CONFIGURED:
         apple_url = f"{config.PUBLIC_BASE_URL}/api/wallet/apple/{runner.id}"
-        apple_line_html = (
-            f'<p style="margin:8px 0;">🍏 <a href="{apple_url}" '
-            f'style="color:#E7B23E;">Zu Apple Wallet hinzufügen</a></p>'
-        )
-        apple_line_text = f"- Apple Wallet: {apple_url}\n"
+        buttons.append(_button(apple_url, "🍏 Zu Apple Wallet"))
+        text_links.append(f"- Apple Wallet: {apple_url}")
+
+    buttons_html = "".join(buttons)
+    text_links_str = "\n".join(text_links)
 
     html = f"""\
 <div style="font-family:-apple-system,Segoe UI,Inter,sans-serif;max-width:520px;
-     margin:0 auto;background:#100E1A;color:#EDE8DD;border-radius:16px;
-     padding:32px;">
+     margin:0 auto;background:#100E1A;color:#EDE8DD;border-radius:16px;padding:32px;">
   <h1 style="font-size:1.4rem;margin:0 0 4px;">Danke, {name}! 🎉</h1>
   <p style="color:#9a94a8;margin:0 0 20px;">Deine Anmeldung für
      <strong style="color:#EDE8DD;">{event}</strong> ist gespeichert.</p>
   <p style="font-size:1rem;margin:0 0 24px;">Deine Startnummer:
      <strong style="color:#E7B23E;font-size:1.4rem;">{bib}</strong></p>
-  <div style="background:#1a1730;border-radius:12px;padding:20px;margin-bottom:20px;">
-    <p style="margin:0 0 12px;font-weight:600;">🎟️ Dein Startticket</p>
-    <p style="margin:8px 0;">📱 <a href="{ticket_url}" style="color:#E7B23E;">
-       Ticket mit QR-Code öffnen</a> &nbsp;
-       <span style="color:#9a94a8;font-size:.85rem;">(auf jedem Handy, iPhone: als PDF sichern)</span></p>
-    <p style="margin:8px 0;">🤖 <a href="{google_url}" style="color:#E7B23E;">
-       Zu Google Wallet hinzufügen</a></p>
-    {apple_line_html}
+
+  <div style="background:#1a1730;border-radius:12px;padding:24px;margin-bottom:20px;
+       text-align:center;">
+    <p style="margin:0 0 16px;font-weight:600;">🎟️ Dein Startticket</p>
+    <div style="background:#fff;display:inline-block;padding:12px;border-radius:12px;
+         line-height:0;">
+      <img src="{qr_src}" width="200" height="200" alt="QR-Code Check-in"
+           style="display:block;width:200px;height:200px;">
+    </div>
+    <p style="color:#9a94a8;font-size:0.82rem;margin:14px 0 0;">
+       Zeig diesen QR-Code beim Check-in am Start-/Zielbereich vor.</p>
   </div>
-  <p style="color:#9a94a8;font-size:.85rem;margin:0;">Zeig den QR-Code beim Check-in
-     am Start-/Zielbereich vor. Bis bald auf der Strecke!</p>
+
+  <p style="margin:0 0 6px;font-weight:600;">So nutzt du dein Ticket:</p>
+  <div style="margin-bottom:16px;">{buttons_html}</div>
+  <p style="color:#9a94a8;font-size:0.85rem;margin:0;">
+     Oder nutze einfach diese E-Mail als Bestätigung — der QR-Code oben genügt.
+     Auf dem iPhone kannst du die Ticket-Seite über „Teilen → PDF sichern" ablegen.</p>
+
+  <p style="color:#9a94a8;font-size:0.8rem;margin:24px 0 0;">
+     Bis bald auf der Strecke! 🏃</p>
 </div>"""
 
     text = f"""\
@@ -80,10 +109,10 @@ Deine Anmeldung für {config.EVENT_NAME} ist gespeichert.
 Startnummer: {bib}
 
 Dein Startticket:
-- Ticket mit QR-Code: {ticket_url}
-- Google Wallet: {google_url}
-{apple_line_text}
-Zeig den QR-Code beim Check-in am Start-/Zielbereich vor. Bis bald!
+{text_links_str}
+
+Der QR-Code auf der Ticket-Seite gilt als Check-in. Du kannst diese E-Mail auch
+einfach als Bestätigung nutzen. Bis bald!
 """
     return subject, html, text
 
@@ -93,11 +122,18 @@ def send_confirmation(runner) -> None:
     Verschickt die Bestätigungsmail (oder legt sie im Dev-Modus als Datei ab).
     Fehler werden abgefangen und nur protokolliert.
     """
-    subject, html, text = build_confirmation_email(runner)
+    qr_png = ticket.qr_png_bytes(runner.id)
 
+    # Dev-Modus: QR als data-URI einbetten und lokal speichern.
     if not config.EMAIL_CONFIGURED:
+        data_uri = "data:image/png;base64," + base64.b64encode(qr_png).decode("ascii")
+        subject, html, _ = build_confirmation_email(runner, data_uri)
         _save_dev_email(runner.email, subject, html)
         return
+
+    # Echter Versand: QR als inline-Bild (CID) anhängen.
+    image_cid = make_msgid(domain="ftwc")  # ergibt "<...@ftwc>"
+    subject, html, text = build_confirmation_email(runner, f"cid:{image_cid[1:-1]}")
 
     try:
         msg = EmailMessage()
@@ -106,6 +142,8 @@ def send_confirmation(runner) -> None:
         msg["To"] = runner.email
         msg.set_content(text)
         msg.add_alternative(html, subtype="html")
+        # QR an den HTML-Teil als verwandtes inline-Bild hängen.
+        msg.get_payload()[1].add_related(qr_png, "image", "png", cid=image_cid)
 
         if config.SMTP_PORT == 465:
             context = ssl.create_default_context()
@@ -121,8 +159,10 @@ def send_confirmation(runner) -> None:
         print(f"[email] Bestätigung an {runner.email} verschickt (Startnummer {runner.bib_number}).")
     except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
         print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
-        # Als Fallback trotzdem lokal ablegen, damit nichts verloren geht.
-        _save_dev_email(runner.email, subject, html)
+        # Fallback: trotzdem lokal ablegen, damit nichts verloren geht.
+        data_uri = "data:image/png;base64," + base64.b64encode(qr_png).decode("ascii")
+        _subject, _html, _ = build_confirmation_email(runner, data_uri)
+        _save_dev_email(runner.email, _subject, _html)
 
 
 def _save_dev_email(to: str, subject: str, html: str) -> None:

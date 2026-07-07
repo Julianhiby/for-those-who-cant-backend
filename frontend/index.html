@@ -1359,13 +1359,6 @@
         <label for="reg-goal">Rundenziel (unverbindlich)</label>
         <input type="number" id="reg-goal" placeholder="z. B. 30">
       </div>
-      <div class="field">
-        <label for="reg-gps">GPS-Gerät benötigt?</label>
-        <select id="reg-gps">
-          <option>Ja, bitte stellen</option>
-          <option>Nein, ich bringe eigenes</option>
-        </select>
-      </div>
 
       <div class="field full">
         <label>Deine Sponsor:innen (Betrag pro gelaufener Runde)</label>
@@ -1557,7 +1550,6 @@
       team_name: regType === 'team' ? document.getElementById('reg-team').value.trim() : null,
       team_size: regType === 'team' ? parseInt(document.getElementById('reg-teamsize').value, 10) : null,
       lap_goal: parseInt(document.getElementById('reg-goal').value, 10) || null,
-      gps_device_needed: document.getElementById('reg-gps').value.startsWith('Ja'),
       sponsors: collectSponsors(),
     };
 
