@@ -1,34 +1,43 @@
 """
 E-Mail-Versand: Anmeldebestätigung mit QR-Ticket.
 
-Zwei Betriebsarten:
-  1) SMTP konfiguriert (config.EMAIL_CONFIGURED) -> echte E-Mail wird verschickt.
-     Der QR-Code wird als *inline*-Bild (CID) angehängt -- so zeigen ihn Gmail,
-     Apple Mail & Co. zuverlässig an (data-URIs werden in E-Mails oft blockiert).
-  2) Nicht konfiguriert -> DEV-MODUS: die E-Mail wird NICHT verschickt, sondern
-     als HTML-Datei unter backend/dev_emails/ gespeichert (QR als data-URI, damit
-     die Datei beim Öffnen im Browser sofort den Code zeigt). Ideal zum Testen
-     ohne E-Mail-Anbieter.
+Drei Versandwege (in dieser Reihenfolge, gesteuert über config):
+  1) Resend (HTTP-API)  -> EMPFOHLEN. Funktioniert auch auf Render, weil es über
+     HTTPS (Port 443) läuft -- im Gegensatz zu SMTP, das Render im Gratis-Plan
+     blockiert. Aktiv, sobald RESEND_API_KEY gesetzt ist.
+  2) SMTP  -> klassischer Mailserver (z. B. Gmail). Auf Render-Gratis nicht nutzbar.
+  3) Dev-Modus  -> nichts konfiguriert: die E-Mail wird als HTML-Datei unter
+     backend/dev_emails/ abgelegt statt verschickt.
 
-Der Versand ist bewusst "best effort": schlägt er fehl, wird nur eine Warnung
-protokolliert -- eine Anmeldung soll NICHT scheitern, nur weil der Mailserver
-gerade nicht erreichbar ist.
+Der QR-Code wird als *gehostetes Bild* eingebunden
+(`{PUBLIC_BASE_URL}/api/qr/{id}.png`) -- das funktioniert mit der HTTP-API und wird
+von Gmail & Co. angezeigt (data-URIs werden dort oft blockiert).
+
+Alle Versandwege sind "best effort" und mit Timeout abgesichert: schlägt der
+Versand fehl oder hängt, wird das nur protokolliert -- eine Anmeldung soll nie
+daran scheitern oder blockieren.
 """
 
-import base64
+import json
 import smtplib
 import ssl
+import urllib.error
+import urllib.request
 from datetime import datetime
 from email.message import EmailMessage
-from email.utils import make_msgid
 from html import escape
 
 import config
-import ticket
+
+_TIMEOUT = 10  # Sekunden, für alle Netzwerk-Versandwege
 
 
 def _ticket_url(runner) -> str:
     return f"{config.PUBLIC_BASE_URL}/api/ticket/{runner.id}"
+
+
+def _qr_url(runner) -> str:
+    return f"{config.PUBLIC_BASE_URL}/api/qr/{runner.id}.png"
 
 
 def _button(href: str, label: str) -> str:
@@ -40,16 +49,12 @@ def _button(href: str, label: str) -> str:
     )
 
 
-def build_confirmation_email(runner, qr_src: str) -> tuple[str, str, str]:
-    """
-    Gibt (Betreff, HTML-Text, Plain-Text) für die Bestätigungsmail zurück.
-
-    `qr_src` ist die Bildquelle für den eingebetteten QR-Code -- beim echten
-    Versand "cid:...", im Dev-Modus eine data-URI.
-    """
+def build_confirmation_email(runner) -> tuple[str, str, str]:
+    """Gibt (Betreff, HTML-Text, Plain-Text) für die Bestätigungsmail zurück."""
     name = escape(runner.name)
     bib = escape(str(runner.bib_number or "—"))
     ticket_url = _ticket_url(runner)
+    qr_url = _qr_url(runner)
     event = escape(config.EVENT_NAME)
 
     subject = f"Deine Anmeldung für {config.EVENT_NAME} · Startnummer {bib}"
@@ -85,7 +90,7 @@ def build_confirmation_email(runner, qr_src: str) -> tuple[str, str, str]:
     <p style="margin:0 0 16px;font-weight:600;">🎟️ Dein Startticket</p>
     <div style="background:#fff;display:inline-block;padding:12px;border-radius:12px;
          line-height:0;">
-      <img src="{qr_src}" width="200" height="200" alt="QR-Code Check-in"
+      <img src="{qr_url}" width="200" height="200" alt="QR-Code Check-in"
            style="display:block;width:200px;height:200px;">
     </div>
     <p style="color:#9a94a8;font-size:0.82rem;margin:14px 0 0;">
@@ -119,50 +124,79 @@ einfach als Bestätigung nutzen. Bis bald!
 
 def send_confirmation(runner) -> None:
     """
-    Verschickt die Bestätigungsmail (oder legt sie im Dev-Modus als Datei ab).
-    Fehler werden abgefangen und nur protokolliert.
+    Verschickt die Bestätigungsmail über den ersten konfigurierten Weg
+    (Resend -> SMTP -> Dev-Modus). Fehler werden abgefangen und protokolliert;
+    im Fehlerfall wird die Mail zusätzlich lokal abgelegt.
     """
-    qr_png = ticket.qr_png_bytes(runner.id)
+    subject, html, text = build_confirmation_email(runner)
 
-    # Dev-Modus: QR als data-URI einbetten und lokal speichern.
-    if not config.EMAIL_CONFIGURED:
-        data_uri = "data:image/png;base64," + base64.b64encode(qr_png).decode("ascii")
-        subject, html, _ = build_confirmation_email(runner, data_uri)
+    try:
+        if config.RESEND_CONFIGURED:
+            _send_via_resend(runner.email, subject, html, text)
+            print(f"[email] Resend: Bestätigung an {runner.email} verschickt "
+                  f"(Startnummer {runner.bib_number}).")
+            return
+        if config.EMAIL_CONFIGURED:
+            _send_via_smtp(runner.email, subject, html, text)
+            print(f"[email] SMTP: Bestätigung an {runner.email} verschickt "
+                  f"(Startnummer {runner.bib_number}).")
+            return
+    except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
+        print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
         _save_dev_email(runner.email, subject, html)
         return
 
-    # Echter Versand: QR als inline-Bild (CID) anhängen.
-    image_cid = make_msgid(domain="ftwc")  # ergibt "<...@ftwc>"
-    subject, html, text = build_confirmation_email(runner, f"cid:{image_cid[1:-1]}")
+    # Nichts konfiguriert -> Dev-Modus.
+    _save_dev_email(runner.email, subject, html)
 
+
+def _send_via_resend(to: str, subject: str, html: str, text: str) -> None:
+    """Versand über die Resend-HTTP-API (POST /emails)."""
+    payload = json.dumps({
+        "from": config.RESEND_FROM,
+        "to": [to],
+        "subject": subject,
+        "html": html,
+        "text": text,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {config.RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
     try:
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = f"{config.SMTP_FROM_NAME} <{config.SMTP_FROM}>"
-        msg["To"] = runner.email
-        msg.set_content(text)
-        msg.add_alternative(html, subtype="html")
-        # QR an den HTML-Teil als verwandtes inline-Bild hängen.
-        msg.get_payload()[1].add_related(qr_png, "image", "png", cid=image_cid)
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as res:
+            res.read()  # Antwort auslesen (enthält die Message-ID)
+    except urllib.error.HTTPError as e:
+        # Fehlermeldung der API mitnehmen (z. B. "nur an eigene Adresse erlaubt").
+        detail = e.read().decode("utf-8", "replace")
+        raise RuntimeError(f"Resend HTTP {e.code}: {detail}") from e
 
-        if config.SMTP_PORT == 465:
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT, context=context) as server:
-                server.login(config.SMTP_USER, config.SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT) as server:
-                server.starttls(context=ssl.create_default_context())
-                server.login(config.SMTP_USER, config.SMTP_PASSWORD)
-                server.send_message(msg)
 
-        print(f"[email] Bestätigung an {runner.email} verschickt (Startnummer {runner.bib_number}).")
-    except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
-        print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
-        # Fallback: trotzdem lokal ablegen, damit nichts verloren geht.
-        data_uri = "data:image/png;base64," + base64.b64encode(qr_png).decode("ascii")
-        _subject, _html, _ = build_confirmation_email(runner, data_uri)
-        _save_dev_email(runner.email, _subject, _html)
+def _send_via_smtp(to: str, subject: str, html: str, text: str) -> None:
+    """Versand über einen SMTP-Server (mit Timeout, damit nichts hängen bleibt)."""
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"{config.SMTP_FROM_NAME} <{config.SMTP_FROM}>"
+    msg["To"] = to
+    msg.set_content(text)
+    msg.add_alternative(html, subtype="html")
+
+    if config.SMTP_PORT == 465:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT,
+                              context=context, timeout=_TIMEOUT) as server:
+            server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=_TIMEOUT) as server:
+            server.starttls(context=ssl.create_default_context())
+            server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            server.send_message(msg)
 
 
 def _save_dev_email(to: str, subject: str, html: str) -> None:
@@ -175,4 +209,4 @@ def _save_dev_email(to: str, subject: str, html: str) -> None:
         f"<!-- An: {to} | Betreff: {subject} -->\n{html}",
         encoding="utf-8",
     )
-    print(f"[email:dev] Kein SMTP konfiguriert -- E-Mail an {to} gespeichert unter: {path}")
+    print(f"[email:dev] Kein Versand konfiguriert -- E-Mail an {to} gespeichert unter: {path}")

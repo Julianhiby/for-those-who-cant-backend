@@ -17,3 +17,7 @@ cryptography>=42.0
 
 # QR-Code für das kostenlose Ticket (erzeugt PNG lokal, kein externer Dienst)
 qrcode[pil]>=7.4
+
+# Postgres-Treiber (für dauerhafte Datenbank, z. B. Neon). SQLite braucht ihn
+# nicht, aber installiert schadet er nicht.
+psycopg2-binary>=2.9

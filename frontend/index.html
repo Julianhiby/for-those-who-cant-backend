@@ -1569,11 +1569,24 @@
       return;
     }
 
+    // Der Gratis-Server "schläft" nach Leerlauf ein; der erste Aufruf kann dann
+    // bis zu ~1 Min dauern. Nach kurzer Wartezeit einen Hinweis einblenden, damit
+    // die Seite nicht "eingefroren" wirkt.
+    const wakeHint = setTimeout(() => {
+      successEl.innerHTML = 'Server wird geweckt – das kann beim ersten Mal bis zu ' +
+        'einer Minute dauern. Bitte kurz warten …';
+      successEl.classList.add('show');
+    }, 4000);
+    // Anfrage nach 70 s abbrechen, statt endlos zu hängen.
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 70000);
+
     try {
       const res = await fetch(API_BASE_URL + '/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error('Server antwortete mit Fehler ' + res.status);
       const data = await res.json();
@@ -1586,11 +1599,22 @@
         '🤖 <a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>';
       successEl.classList.add('show');
       submitBtn.textContent = 'Angemeldet ✓';
+      // Felder leeren, damit klar ist, dass die Anmeldung raus ist.
+      form.reset();
+      sponsorListEl.innerHTML = '';
+      addSponsorRow();
     } catch (err) {
-      successEl.innerHTML = 'Etwas ist schiefgelaufen (' + err.message + '). Bitte versuch es gleich noch einmal.';
+      const msg = err.name === 'AbortError'
+        ? 'Der Server hat zu lange nicht geantwortet (er ist evtl. gerade aufgewacht). Bitte versuch es gleich noch einmal.'
+        : 'Etwas ist schiefgelaufen (' + err.message + '). Bitte versuch es gleich noch einmal.';
+      successEl.innerHTML = msg;
       successEl.classList.add('show');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Startplatz sichern →';
+    } finally {
+      // Timer stoppen, damit der Weck-Hinweis nicht die Erfolgs-/Fehlermeldung überschreibt.
+      clearTimeout(wakeHint);
+      clearTimeout(abortTimer);
     }
   });
 

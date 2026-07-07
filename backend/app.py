@@ -27,13 +27,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from sqlmodel import SQLModel, Session, create_engine, select
 
-from config import DATABASE_URL, LAP_DISTANCE_KM
+from config import DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM
 from models import Runner, Sponsor, LapEvent
 from wallet import apple_wallet, google_wallet
 import notifications
 import ticket
 
-engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
+# connect_args={"check_same_thread": False} ist SQLite-spezifisch -- bei Postgres
+# würde dieses Argument einen Fehler werfen. Deshalb nur für SQLite setzen.
+_engine_kwargs = {"echo": False}
+if DATABASE_IS_SQLITE:
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 
 @asynccontextmanager
@@ -239,6 +244,13 @@ def ticket_page(runner_id: str):
         if not runner:
             raise HTTPException(404, "Läufer:in nicht gefunden")
         return HTMLResponse(ticket.render_ticket_html(runner))
+
+
+@app.get("/api/qr/{runner_id}.png")
+def qr_image(runner_id: str):
+    """QR-Code als PNG -- wird u. a. von der Bestätigungs-E-Mail eingebunden.
+    Kein DB-Zugriff nötig: der QR kodiert einfach die ID aus dem Pfad."""
+    return Response(ticket.qr_png_bytes(runner_id), media_type="image/png")
 
 
 # --------------------------------------------------------------------------

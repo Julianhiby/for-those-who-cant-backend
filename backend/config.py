@@ -40,12 +40,20 @@ EVENT_NAME = os.getenv("EVENT_NAME", "For Those Who Can't")
 # Länge einer Runde in Kilometern (für die km-Anzeige im Leaderboard).
 LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "1.0"))
 
-# Datenbank. Standard: lokale SQLite-Datei. Für Produktion z. B.:
-#   postgresql+psycopg://user:pass@host:5432/dbname
+# Datenbank. Standard: lokale SQLite-Datei. Für Produktion z. B. Neon/Postgres:
+#   postgresql://user:pass@host/dbname?sslmode=require
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     f"sqlite:///{(_PROJECT_ROOT / 'database.db').as_posix()}",
 )
+
+# Manche Anbieter (u. a. ältere Postgres-URLs) liefern das veraltete Schema
+# "postgres://" -- SQLAlchemy 2 verlangt aber "postgresql://". Normalisieren.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+
+# True, sobald eine echte (nicht-SQLite) Datenbank genutzt wird.
+DATABASE_IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
 # Öffentlich erreichbare Basis-URL (für Links in E-Mails, Tickets, Wallet).
 # Reihenfolge: explizit gesetzte Variable > von Render automatisch gesetzte
@@ -60,13 +68,24 @@ PUBLIC_BASE_URL = (
 
 # --------------------------------------------------------------------------
 # E-Mail (Anmeldebestätigung mit Ticket)
-# Ist SMTP nicht konfiguriert, läuft der Dev-Modus: die E-Mail wird nicht
-# verschickt, sondern als HTML-Datei unter backend/dev_emails/ abgelegt und
-# in der Konsole protokolliert -- ideal zum Testen ohne E-Mail-Anbieter.
-# Für echte Mails z. B. Gmail: SMTP_HOST=smtp.gmail.com, SMTP_PORT=587,
-# SMTP_USER=deinname@gmail.com, SMTP_PASSWORD=<App-Passwort aus dem Google-Konto>.
+#
+# Versandwege (in dieser Reihenfolge, siehe notifications.py):
+#   1) Resend (HTTP-API)  -- EMPFOHLEN, funktioniert auch auf Render (Port 443).
+#      Nur RESEND_API_KEY setzen. Ohne eigene Domain als Absender
+#      "onboarding@resend.dev" nutzen (Resend-Testmodus: sendet nur an die
+#      eigene Konto-Adresse).
+#   2) SMTP  -- klassischer Mailserver (z. B. Gmail). ACHTUNG: Render blockiert
+#      ausgehendes SMTP im Gratis-Plan, funktioniert dort also NICHT.
+#   3) Dev-Modus  -- ist nichts konfiguriert, wird die Mail nicht verschickt,
+#      sondern als HTML-Datei unter backend/dev_emails/ abgelegt.
 # --------------------------------------------------------------------------
 
+# 1) Resend (HTTP-API)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM = os.getenv("RESEND_FROM", "") or f"{EVENT_NAME} <onboarding@resend.dev>"
+RESEND_CONFIGURED = bool(RESEND_API_KEY)
+
+# 2) SMTP (Fallback)
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
