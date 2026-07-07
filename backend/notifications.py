@@ -174,6 +174,11 @@ def _send_via_resend(to: str, subject: str, html: str, text: str) -> None:
         headers={
             "Authorization": f"Bearer {config.RESEND_API_KEY}",
             "Content-Type": "application/json",
+            # WICHTIG: Ohne eigenen User-Agent blockt die Cloudflare vor Resends
+            # API den Standard-"Python-urllib" mit Fehler 1010 (403). Ein normaler
+            # User-Agent kommt durch.
+            "User-Agent": "ForThoseWhoCant-Backend/1.0",
+            "Accept": "application/json",
         },
         method="POST",
     )
