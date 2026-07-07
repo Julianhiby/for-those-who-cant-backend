@@ -47,9 +47,41 @@ cd backend
 uvicorn app:app --reload --port 8000
 ```
 
-Danach:
+Danach im Browser öffnen:
+- **Website (Anmeldung + Live-Tracker):** http://localhost:8000
 - API-Doku (Swagger): http://localhost:8000/docs
 - Health-Check: http://localhost:8000/api/health
+
+> Das Backend liefert die Website selbst aus — alles läuft unter **einer**
+> Adresse, kein zweiter Server und keine CORS-Einstellungen nötig.
+
+## Test-Lauf (Probelauf ohne echtes GPS)
+
+So testest du den kompletten Ablauf lokal:
+
+1. **Server starten** (siehe oben) und http://localhost:8000 öffnen.
+2. **Anmelden:** Unten im Formular „Startplatz sichern". Du bekommst sofort
+   Startnummer + Ticket-Link angezeigt.
+3. **Ticket ansehen:** Auf „Startticket mit QR-Code öffnen" klicken —
+   das ist die kostenlose Wallet-Alternative (funktioniert auf jedem Handy).
+4. **Bestätigungs-E-Mail:** Ist kein SMTP eingerichtet, wird die E-Mail nicht
+   verschickt, sondern unter `backend/dev_emails/` als HTML-Datei abgelegt —
+   einfach im Browser öffnen, um sie zu prüfen.
+5. **Runden simulieren:** In einem zweiten Terminal (Server weiterlaufen lassen):
+   ```bash
+   cd backend
+   ..\.venv\Scripts\python.exe simulate.py
+   ```
+   Das Skript meldet Test-Läufer:innen an und lässt Runden hochzählen. Auf der
+   Website siehst du Rundenzahl und Spendenstand live steigen.
+
+### Wallet-Optionen im Überblick
+
+| Option | Kostenlos? | Funktioniert auf | Status |
+|--------|-----------|------------------|--------|
+| **QR-Ticket** (`/api/ticket/{id}`) | ✅ ja | jedem Handy (iPhone: als PDF sichern) | **sofort einsatzbereit** |
+| **Google Wallet** | ✅ ja | Android | Code fertig, braucht kostenloses Google-Cloud-Setup |
+| **Apple Wallet** | ❌ nein (99 €/Jahr Apple Developer) | iPhone | Code fertig, braucht Apple-Zertifikate |
 
 ## Wichtigste API-Endpunkte
 

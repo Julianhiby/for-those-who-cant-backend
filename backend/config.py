@@ -47,6 +47,32 @@ DATABASE_URL = os.getenv(
     f"sqlite:///{(_PROJECT_ROOT / 'database.db').as_posix()}",
 )
 
+# Öffentlich erreichbare Basis-URL (für Links in E-Mails, Tickets, Wallet).
+# Lokal: http://localhost:8000. In Produktion die echte Domain eintragen.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+
+
+# --------------------------------------------------------------------------
+# E-Mail (Anmeldebestätigung mit Ticket)
+# Ist SMTP nicht konfiguriert, läuft der Dev-Modus: die E-Mail wird nicht
+# verschickt, sondern als HTML-Datei unter backend/dev_emails/ abgelegt und
+# in der Konsole protokolliert -- ideal zum Testen ohne E-Mail-Anbieter.
+# Für echte Mails z. B. Gmail: SMTP_HOST=smtp.gmail.com, SMTP_PORT=587,
+# SMTP_USER=deinname@gmail.com, SMTP_PASSWORD=<App-Passwort aus dem Google-Konto>.
+# --------------------------------------------------------------------------
+
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "") or SMTP_USER or "no-reply@forthosewhocant-run.de"
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", EVENT_NAME)
+
+EMAIL_CONFIGURED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+
+# Ablage für Dev-Modus-E-Mails (wird bei Bedarf automatisch angelegt).
+DEV_EMAIL_DIR = _PROJECT_ROOT / "backend" / "dev_emails"
+
 
 # --------------------------------------------------------------------------
 # Apple Wallet

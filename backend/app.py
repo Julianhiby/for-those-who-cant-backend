@@ -17,17 +17,21 @@ Wallet-Zertifikate einträgst.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from config import DATABASE_URL, LAP_DISTANCE_KM
 from models import Runner, Sponsor, LapEvent
 from wallet import apple_wallet, google_wallet
+import notifications
+import ticket
 
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 
@@ -80,12 +84,13 @@ class RegisterOut(BaseModel):
     id: str
     bib_number: int
     name: str
+    ticket_url: str
     wallet_apple_url: str
     wallet_google_url: str
 
 
 @app.post("/api/register", response_model=RegisterOut)
-def register(payload: RegisterIn):
+def register(payload: RegisterIn, background_tasks: BackgroundTasks):
     with Session(engine) as session:
         # Nächste fortlaufende Startnummer bestimmen (höchste vorhandene + 1,
         # oder 1 bei der allerersten Anmeldung).
@@ -117,10 +122,16 @@ def register(payload: RegisterIn):
             ))
         session.commit()
 
+        # Bestätigungs-E-Mail im Hintergrund verschicken (bzw. im Dev-Modus
+        # lokal ablegen). Läuft NACH der Antwort, damit die Anmeldung schnell
+        # bleibt und ein Mailserver-Problem sie nie scheitern lässt.
+        background_tasks.add_task(notifications.send_confirmation, runner)
+
         return RegisterOut(
             id=runner.id,
             bib_number=runner.bib_number,
             name=runner.name,
+            ticket_url=f"/api/ticket/{runner.id}",
             wallet_apple_url=f"/api/wallet/apple/{runner.id}",
             wallet_google_url=f"/api/wallet/google/{runner.id}",
         )
@@ -218,6 +229,19 @@ def live_data():
 
 
 # --------------------------------------------------------------------------
+# Kostenloses QR-Ticket (funktioniert auf jedem Handy, ohne Wallet-Konto)
+# --------------------------------------------------------------------------
+
+@app.get("/api/ticket/{runner_id}", response_class=HTMLResponse)
+def ticket_page(runner_id: str):
+    with Session(engine) as session:
+        runner = session.get(Runner, runner_id)
+        if not runner:
+            raise HTTPException(404, "Läufer:in nicht gefunden")
+        return HTMLResponse(ticket.render_ticket_html(runner))
+
+
+# --------------------------------------------------------------------------
 # Wallet-Pässe
 # --------------------------------------------------------------------------
 
@@ -254,3 +278,16 @@ def wallet_google(runner_id: str):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+# --------------------------------------------------------------------------
+# Website ausliefern
+# Das Frontend (../frontend) wird direkt vom Backend bedient. So läuft im Test
+# alles unter einer Adresse (http://localhost:8000) -- ohne CORS-Probleme und
+# ohne zweiten Server. Diese Zeilen stehen bewusst GANZ UNTEN, damit alle
+# /api/...-Routen Vorrang vor dem statischen Katch-all haben.
+# --------------------------------------------------------------------------
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

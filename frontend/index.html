@@ -1491,11 +1491,19 @@
   });
 
   /* ---------------- Registration form: Solo/Team toggle ---------------- */
-  // Trag hier die URL deines Backends ein, sobald es deployed ist (siehe
-  // backend/README.md), z. B. 'https://for-those-who-cant.onrender.com'.
-  // Leer lassen ('') = Formular zeigt nur eine lokale Erfolgsmeldung an,
-  // ohne Daten irgendwohin zu senden (Vorschau-Modus).
-  const API_BASE_URL = 'https://for-those-who-cant-backend.onrender.com';
+  // Adresse des Backends -- wird automatisch passend gewählt:
+  //  - Seite vom Backend ausgeliefert (localhost ODER echte Domain)
+  //      -> gleiche Adresse verwenden (location.origin), keine CORS-Probleme.
+  //  - index.html direkt per Doppelklick geöffnet (file://)
+  //      -> lokalen Test-Server unter http://localhost:8000 ansprechen.
+  // Für ein separat gehostetes Frontend (z. B. GitHub Pages) hier stattdessen
+  // die feste Backend-URL eintragen, z. B. 'https://...onrender.com'.
+  const PROD_BACKEND_URL = 'https://for-those-who-cant-backend.onrender.com';
+  const API_BASE_URL =
+    location.protocol === 'file:' ? 'http://localhost:8000'
+    : location.origin;
+  // Hinweis: Ist das Frontend NICHT vom Backend ausgeliefert, oben
+  // `location.origin` durch `PROD_BACKEND_URL` ersetzen.
 
   const toggleBtns = document.querySelectorAll('.reg-toggle button');
   const teamFields = document.querySelectorAll('.team-field');
@@ -1581,8 +1589,9 @@
       successEl.innerHTML =
         'Danke, ' + data.name + '! Deine Anmeldung wurde gespeichert. ' +
         'Startnummer: <strong>' + data.bib_number + '</strong><br>' +
-        '<a href="' + API_BASE_URL + data.wallet_apple_url + '">Zu Apple Wallet hinzufügen</a> · ' +
-        '<a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>';
+        'Wir haben dir außerdem eine Bestätigung per E-Mail geschickt.<br>' +
+        '🎟️ <a href="' + API_BASE_URL + data.ticket_url + '" target="_blank">Startticket mit QR-Code öffnen</a> · ' +
+        '🤖 <a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>';
       successEl.classList.add('show');
       submitBtn.textContent = 'Angemeldet ✓';
     } catch (err) {

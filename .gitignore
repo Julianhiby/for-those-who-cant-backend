@@ -21,6 +21,9 @@ service-account*.json
 *.db
 database.db
 
+# Dev-Modus: lokal abgelegte E-Mails
+backend/dev_emails/
+
 # Editor / OS
 .vscode/
 .idea/
