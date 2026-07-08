@@ -276,6 +276,9 @@
   @media (prefers-reduced-motion: reduce){
     .runner-dot{ animation: none !important; }
     .track-fill{ transition: none; }
+    .reveal{ opacity: 1 !important; transform: none !important; transition: none !important; }
+    .hero .eyebrow, .hero h1, .hero-sub, .hero-cta, .hero-stats{ animation: none !important; }
+    .hero::before{ animation: none !important; }
   }
 
   /* ---------- SECTION SHELLS ---------- */
@@ -1077,6 +1080,57 @@
     .hero-stats{ gap: 16px 20px; }
     .format-specs{ grid-template-columns: 1fr; }
   }
+
+  /* ============ BEWEGUNG / ANIMATIONEN ============ */
+
+  /* Sanftes Einblenden beim Scrollen (per JS getriggert) */
+  .reveal{
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity .75s cubic-bezier(.22,.61,.36,1),
+                transform .75s cubic-bezier(.22,.61,.36,1);
+    will-change: opacity, transform;
+  }
+  .reveal.is-visible{ opacity: 1; transform: none; }
+
+  /* Hero: gestaffelter Auftritt beim Laden */
+  @keyframes heroRise{
+    from{ opacity: 0; transform: translateY(30px); }
+    to{ opacity: 1; transform: none; }
+  }
+  .hero .eyebrow,
+  .hero h1,
+  .hero-sub,
+  .hero-cta,
+  .hero-stats{ animation: heroRise .9s cubic-bezier(.22,.61,.36,1) both; }
+  .hero h1{ animation-delay: .08s; }
+  .hero-sub{ animation-delay: .20s; }
+  .hero-cta{ animation-delay: .32s; }
+  .hero-stats{ animation-delay: .44s; }
+
+  /* Ambientes, langsam schwebendes Glühen im Hero */
+  .hero::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(460px 340px at 22% 32%, rgba(231,178,62,0.10), transparent 70%);
+    animation: heroGlow 16s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes heroGlow{
+    from{ transform: translate3d(-3%, -2%, 0) scale(1); }
+    to{ transform: translate3d(5%, 4%, 0) scale(1.14); }
+  }
+
+  /* Nav verdichtet sich beim Scrollen */
+  header.site-nav{ transition: background .3s ease, box-shadow .3s ease; }
+  .nav-inner{ transition: padding .3s ease; }
+  .site-nav.scrolled{ background: rgba(18,21,28,0.94); box-shadow: 0 1px 0 var(--line-soft); }
+  .site-nav.scrolled .nav-inner{ padding-top: 10px; padding-bottom: 10px; }
+
+  /* Micro-Interaktion: Buttons/Karten heben sich beim Hover etwas an */
+  .nav-cta, .btn-primary, .reg-submit{ transition: transform .18s ease, background .2s ease, color .2s ease; }
 </style>
 </head>
 <body>
@@ -2055,7 +2109,31 @@
     return n.toLocaleString('de-DE') + ' €';
   }
 
+  // Zählt eine Zahl weich von 0 auf den Zielwert hoch (easeOutCubic).
+  function animateCount(el, to, fmt){
+    if (!el) return;
+    if (reduceMotion){ el.textContent = fmt(to); return; }
+    const dur = 1400, start = performance.now();
+    (function frame(now){
+      const t = Math.min(1, (now - start) / dur);
+      el.textContent = fmt(to * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) requestAnimationFrame(frame);
+    })(performance.now());
+  }
+  const intFmt = n => Math.round(n).toLocaleString('de-DE');
+  const eurFmt = n => formatEUR(Math.round(n));
+
+  let statsAnimated = false;
   function applyLiveStats(laps, funds){
+    // Beim ersten Mal weich hochzählen, danach direkt setzen (Live-Updates).
+    if (!statsAnimated){
+      statsAnimated = true;
+      animateCount(statLaps, laps, intFmt);
+      animateCount(statFunds, funds, eurFmt);
+      animateCount(fundsAmount, funds, eurFmt);
+      animateCount(badgeLaps, laps, intFmt);
+      return;
+    }
     statLaps.textContent = laps.toLocaleString('de-DE');
     statFunds.textContent = formatEUR(funds);
     fundsAmount.textContent = formatEUR(funds);
@@ -2101,6 +2179,64 @@
     raceHour.textContent = Math.min(h,24);
   }
   setInterval(tick, 1000);
+
+  /* ---------------- Scroll-Reveal (Elemente fliegen sanft ein) ---------------- */
+  if (!reduceMotion && 'IntersectionObserver' in window){
+    const sel = [
+      '.section-head', '.why-quote', '.why-copy', '.impact-item', '.format-card',
+      '.dedication-verse', '.dedication-copy', '.dedication-bib', '.course-map',
+      '.course-facts .fact', '.tracker-panel', '.verse-inner', '.faq-item',
+      '.footer-brand', '.footer-col'
+    ].join(', ');
+    const els = Array.from(document.querySelectorAll(sel));
+    els.forEach(el => el.classList.add('reveal'));
+
+    // Sanfte Staffelung innerhalb von Gruppen (Karten, FAQ, Footer-Spalten ...).
+    const groups = new Map();
+    els.forEach(el => {
+      const arr = groups.get(el.parentElement) || [];
+      arr.push(el); groups.set(el.parentElement, arr);
+    });
+    groups.forEach(arr => arr.forEach((el, i) => {
+      el.style.transitionDelay = Math.min(i, 6) * 70 + 'ms';
+    }));
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting){ e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+    // Bereits sichtbare Elemente sofort zeigen (verhindert Flackern beim Laden),
+    // der Rest wird beim Hereinscrollen animiert.
+    const vh = window.innerHeight;
+    els.forEach(el => {
+      if (el.getBoundingClientRect().top < vh * 0.92) el.classList.add('is-visible');
+      else io.observe(el);
+    });
+  }
+
+  /* ---------------- Läufer-Zähler hochzählen ---------------- */
+  const runnersEl = document.getElementById('stat-runners');
+  if (runnersEl){
+    const target = parseInt(runnersEl.textContent.replace(/\D/g, ''), 10) || 0;
+    animateCount(runnersEl, target, intFmt);
+  }
+
+  /* ---------------- Parallax am Hintergrund-Schriftzug + verdichtende Nav ---------------- */
+  const wmText = document.querySelector('.bg-watermark-text');
+  const siteNav = document.querySelector('header.site-nav');
+  let scrollTicking = false;
+  function onScroll(){
+    const y = window.scrollY;
+    if (siteNav) siteNav.classList.toggle('scrolled', y > 30);
+    if (wmText && !reduceMotion) wmText.style.transform = 'rotate(-6deg) translateY(' + (y * 0.08) + 'px)';
+    scrollTicking = false;
+  }
+  window.addEventListener('scroll', () => {
+    if (!scrollTicking){ requestAnimationFrame(onScroll); scrollTicking = true; }
+  }, { passive: true });
+  onScroll();
 })();
 </script>
 
