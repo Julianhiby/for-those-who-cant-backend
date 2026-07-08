@@ -175,6 +175,12 @@
     background: var(--hivis);
     box-shadow: 0 0 8px var(--hivis);
   }
+  .brand-logo{
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgba(231,178,62,0.35));
+  }
   nav.links{
     display:flex;
     gap: 28px;
@@ -1259,7 +1265,13 @@
 
 <header class="site-nav">
   <div class="nav-inner">
-    <div class="brand"><span class="dot"></span>FOR THOSE WHO CAN'T</div>
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="46" cy="54" r="32" fill="none" stroke="var(--hivis)" stroke-width="11"/>
+        <circle cx="72" cy="26" r="10" fill="var(--hivis)"/>
+      </svg>
+      FOR THOSE WHO CAN'T
+    </div>
     <nav class="links">
       <a href="#warum">Warum</a>
       <a href="#format">Format</a>
@@ -1290,7 +1302,7 @@
       </div>
       <div class="hero-stats">
         <div>
-          <div class="stat-num" id="stat-runners">184</div>
+          <div class="stat-num" id="stat-runners">0</div>
           <div class="stat-label">Angemeldete Läufer:innen</div>
         </div>
         <div>
@@ -1485,7 +1497,7 @@
       <div class="tracker-topbar">
         <div class="live-badge"><span class="pulse"></span>LIVE — RENNEN LÄUFT</div>
         <div class="clock-num">Stunde <span id="race-hour">10</span> / 24 · <span id="race-clock">10:14:02</span></div>
-        <div style="color:var(--paper-dim);" id="tracker-active-count">184 Läufer:innen aktiv getrackt</div>
+        <div style="color:var(--paper-dim);" id="tracker-active-count">Noch keine Läufer:innen angemeldet</div>
         <button type="button" class="share-page-btn" id="share-page-btn" title="Seite teilen">↗ Teilen</button>
       </div>
 
@@ -2063,24 +2075,13 @@
     return routeCoords[0];
   }
 
+  // Farben für die Läufer:innen-Punkte (sobald echte Anmeldungen da sind).
   const runnerColors = ['#F2542D', '#E7B23E', '#A78BFA', '#D98B6B', '#6FCF97', '#5FA8D3'];
-  const runnerNames = [
-    ['M. Kessler','solo',19], ['Team Nordlicht','team',18], ['J. Ostrowski','solo',17],
-    ['Team Steinbock','team',15], ['S. Vogt','solo',14], ['Team Lichtblick','team',14],
-    ['A. Brandt','solo',13], ['R. Nowak','solo',13], ['Team Morgenrot','team',12],
-    ['L. Hartmann','solo',12], ['Team Bergecho','team',11], ['F. Schröder','solo',11],
-    ['C. Reimann','solo',10], ['Team Nachtwache','team',10], ['P. Winkler','solo',9],
-    ['Team Weggefährten','team',9], ['D. Falk','solo',8], ['K. Lindner','solo',7],
-  ];
-  // "let" statt "const": sobald echte Anmeldungen vorliegen, wird dieses Array
-  // durch applyRealRunners() komplett durch die echten Daten ersetzt.
-  let runnerData = runnerNames.map(([name, type, laps], i) => ({
-    id: name, name, type, laps, km: laps * 5,
-    color: runnerColors[i % runnerColors.length],
-    progress: (i * 0.37) % 1,
-  }));
-  let usingRealRunners = false;
-  let demoAnimInterval = null;
+
+  // Startet bewusst LEER -- keine erfundenen Beispiel-Läufer:innen mehr.
+  // Sobald echte Anmeldungen vorliegen, füllt applyRealRunners() (siehe unten)
+  // dieses Array mit den echten Namen/Runden/Kilometern aus /api/live.
+  let runnerData = [];
 
   const trackerMapEl = document.getElementById('tracker-map-real');
   const runnerMarkers = {};
@@ -2129,18 +2130,10 @@
       runnerMarkers[r.id] = marker;
     });
 
-    // Sanfte Bewegung der Beispiel-Läufer im Kreis entlang der echten Route.
-    // Läuft nur, solange noch keine echten Anmeldungen da sind (siehe
-    // applyRealRunners weiter unten, das dieses Interval dann stoppt).
-    if (!reduceMotion){
-      demoAnimInterval = setInterval(() => {
-        if (usingRealRunners) return;
-        runnerData.forEach(r => {
-          r.progress = (r.progress + 0.004) % 1;
-          runnerMarkers[r.id].setLatLng(pointAtFraction(r.progress));
-        });
-      }, 900);
-    }
+    // HINWEIS: Es gibt bewusst keine Bewegungs-Animation mehr für Läufer:innen-
+    // Punkte -- ohne echten GPS-Tracking-Anbieter gäbe es dafür keine echten
+    // Positionen. Sobald ein Anbieter angebunden ist, können hier echte
+    // Positions-Updates (z. B. per Polling/Websocket) die Marker bewegen.
 
     /* ---- Routen-Editor: eigene Punkte per Klick setzen ---- */
     let editMode = false;
@@ -2242,6 +2235,12 @@
 
   function renderRunnerList(){
     runnerListEl.innerHTML = '';
+    if (runnerData.length === 0){
+      runnerEmptyEl.textContent = 'Noch keine Läufer:innen angemeldet — sei die/der Erste! 🏃';
+      runnerEmptyEl.style.display = 'block';
+      return;
+    }
+    runnerEmptyEl.style.display = 'none';
     runnerData.slice().sort((a,b) => b.laps - a.laps).forEach(r => {
       const li = document.createElement('li');
       li.className = 'runner-row';
@@ -2261,22 +2260,13 @@
   }
   renderRunnerList();
 
-  // Sobald echte Anmeldungen da sind (siehe pollLiveData unten), ersetzt diese
-  // Funktion die Beispiel-Läufer:innen durch die echten Namen/Runden/Kilometer
-  // aus /api/live. Die Karten-Punkte der Demo werden dabei entfernt, weil dafür
-  // echte GPS-Positionen nötig wären (noch kein Tracking-Anbieter angebunden --
-  // siehe Hinweis im "integration-note"-Kasten).
+  // Füllt die Läufer:innen-Liste mit den echten Namen/Runden/Kilometern aus
+  // /api/live, sobald mindestens eine Anmeldung vorliegt. Positionen auf der
+  // Karte bleiben leer, bis ein echter GPS-Tracking-Anbieter angebunden ist
+  // (siehe Hinweis im "integration-note"-Kasten).
   const trackerActiveCountEl = document.getElementById('tracker-active-count');
   const integrationNoteEl = document.getElementById('integration-note');
   function applyRealRunners(leaderboard, totalRunners){
-    usingRealRunners = true;
-
-    if (demoAnimInterval){ clearInterval(demoAnimInterval); demoAnimInterval = null; }
-    if (trackerMap && Object.keys(runnerMarkers).length){
-      Object.values(runnerMarkers).forEach(m => trackerMap.removeLayer(m));
-      Object.keys(runnerMarkers).forEach(k => delete runnerMarkers[k]);
-    }
-
     runnerData = leaderboard.map((r, i) => ({
       id: r.id, name: r.name, laps: r.laps, km: r.km,
       color: runnerColors[i % runnerColors.length],
@@ -2295,13 +2285,16 @@
   }
 
   runnerSearchEl?.addEventListener('input', () => {
+    const rows = runnerListEl.querySelectorAll('.runner-row');
+    if (rows.length === 0) return; // "Noch keine Läufer:innen"-Meldung unangetastet lassen.
     const q = runnerSearchEl.value.trim().toLowerCase();
     let anyVisible = false;
-    runnerListEl.querySelectorAll('.runner-row').forEach(row => {
+    rows.forEach(row => {
       const match = row.dataset.name.includes(q);
       row.classList.toggle('hidden', !match);
       if (match) anyVisible = true;
     });
+    runnerEmptyEl.textContent = 'Keine Treffer — anderen Namen versuchen.';
     runnerEmptyEl.style.display = anyVisible ? 'none' : 'block';
   });
 
@@ -2311,11 +2304,12 @@
   // Ist das Backend nicht erreichbar oder API_BASE_URL leer, läuft stattdessen
   // die Mock-Simulation weiter -- die Seite funktioniert also in beiden Fällen.
   //
-  // HINWEIS: Die Namen/Positionen in der Läufer-Liste und auf der Karte oben
-  // bleiben bewusst Beispieldaten, da sie echte GPS-Positionen bräuchten (die
-  // kommen von deinem GPS-Tracking-Anbieter, nicht von diesem Backend). Sag
-  // Bescheid, sobald du einen Anbieter gewählt hast, dann verbinde ich auch
-  // Liste und Karte mit den echten, einzelnen Läufer-Daten.
+  // HINWEIS: Die Läufer:innen-Liste zeigt bereits die echten Namen/Runden aus
+  // /api/live (siehe applyRealRunners oben). Positionen auf der Karte bleiben
+  // bewusst leer, bis ein echter GPS-Tracking-Anbieter angebunden ist (dessen
+  // Positions-Updates kommen von dort, nicht von diesem Backend). Sag Bescheid,
+  // sobald du einen Anbieter gewählt hast, dann verbinde ich auch die Karte mit
+  // echten, einzelnen Läufer-Positionen.
 
   let mockLaps = 1472;
   let mockFunds = 28470;
@@ -2394,6 +2388,9 @@
       const data = await res.json();
       if (typeof data.donationGoal === 'number') donationGoal = data.donationGoal;
       applyLiveStats(data.totalLaps, data.fundsRaised);
+      if (runnersEl && typeof data.totalRunners === 'number'){
+        runnersEl.textContent = data.totalRunners.toLocaleString('de-DE');
+      }
       if (data.totalRunners > 0 && Array.isArray(data.leaderboard)){
         applyRealRunners(data.leaderboard, data.totalRunners);
       }
