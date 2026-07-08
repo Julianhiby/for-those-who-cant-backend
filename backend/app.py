@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from sqlmodel import SQLModel, Session, create_engine, select
 
-from config import DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM
+from config import DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM, DONATION_GOAL
 from models import Runner, Sponsor, LapEvent
 from wallet import apple_wallet, google_wallet
 import notifications
@@ -231,6 +231,7 @@ def live_data():
             "totalRunners": len(runners),
             "totalLaps": total_laps,
             "fundsRaised": round(total_funds, 2),
+            "donationGoal": DONATION_GOAL,
             "leaderboard": leaderboard,
         }
 

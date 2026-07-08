@@ -40,6 +40,9 @@ EVENT_NAME = os.getenv("EVENT_NAME", "For Those Who Can't")
 # Länge einer Runde in Kilometern (für die km-Anzeige im Leaderboard).
 LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "1.0"))
 
+# Spendenziel in Euro, für die Fortschrittsleiste auf der Website.
+DONATION_GOAL = float(os.getenv("DONATION_GOAL", "25000"))
+
 # Admin-Passwort für die Zurücksetzen-Funktion (/api/admin). Ist es leer, ist
 # das Zurücksetzen komplett deaktiviert -- so kann niemand versehentlich oder
 # böswillig die Daten löschen.
