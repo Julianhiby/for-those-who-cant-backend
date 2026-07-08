@@ -1485,7 +1485,7 @@
       <div class="tracker-topbar">
         <div class="live-badge"><span class="pulse"></span>LIVE — RENNEN LÄUFT</div>
         <div class="clock-num">Stunde <span id="race-hour">10</span> / 24 · <span id="race-clock">10:14:02</span></div>
-        <div style="color:var(--paper-dim);">184 Läufer:innen aktiv getrackt</div>
+        <div style="color:var(--paper-dim);" id="tracker-active-count">184 Läufer:innen aktiv getrackt</div>
         <button type="button" class="share-page-btn" id="share-page-btn" title="Seite teilen">↗ Teilen</button>
       </div>
 
@@ -1523,11 +1523,11 @@
             <div class="donation-bar"><div class="donation-bar-fill" id="donation-bar-fill"></div></div>
           </div>
 
-          <div class="integration-note">
-            <strong>Für Entwickler:innen:</strong> Diese Ansicht zeigt aktuell Beispieldaten (Namen,
-            Positionen auf der Strecke, Runden). Ersetze die Funktion <code>fetchLiveData()</code>
-            im Script-Teil durch einen echten Abruf deiner GPS-Tracking-Plattform, um echte
-            Läufer-Positionen, Runden und Distanzen anzuzeigen.
+          <div class="integration-note" id="integration-note">
+            <strong>Für Entwickler:innen:</strong> Sobald echte Anmeldungen vorliegen, ersetzt die
+            Läufer:innen-Liste links automatisch diese Beispieldaten. Die Positionen auf der Karte
+            bleiben aber Beispieldaten, bis ein echter GPS-Tracking-Anbieter angebunden ist (siehe
+            Kommentare bei <code>runnerData</code> im Script-Teil).
           </div>
 
           <div class="stream-block">
@@ -2072,11 +2072,15 @@
     ['C. Reimann','solo',10], ['Team Nachtwache','team',10], ['P. Winkler','solo',9],
     ['Team Weggefährten','team',9], ['D. Falk','solo',8], ['K. Lindner','solo',7],
   ];
-  const runnerData = runnerNames.map(([name, type, laps], i) => ({
+  // "let" statt "const": sobald echte Anmeldungen vorliegen, wird dieses Array
+  // durch applyRealRunners() komplett durch die echten Daten ersetzt.
+  let runnerData = runnerNames.map(([name, type, laps], i) => ({
     id: name, name, type, laps, km: laps * 5,
     color: runnerColors[i % runnerColors.length],
     progress: (i * 0.37) % 1,
   }));
+  let usingRealRunners = false;
+  let demoAnimInterval = null;
 
   const trackerMapEl = document.getElementById('tracker-map-real');
   const runnerMarkers = {};
@@ -2126,8 +2130,11 @@
     });
 
     // Sanfte Bewegung der Beispiel-Läufer im Kreis entlang der echten Route.
+    // Läuft nur, solange noch keine echten Anmeldungen da sind (siehe
+    // applyRealRunners weiter unten, das dieses Interval dann stoppt).
     if (!reduceMotion){
-      setInterval(() => {
+      demoAnimInterval = setInterval(() => {
+        if (usingRealRunners) return;
         runnerData.forEach(r => {
           r.progress = (r.progress + 0.004) % 1;
           runnerMarkers[r.id].setLatLng(pointAtFraction(r.progress));
@@ -2254,6 +2261,39 @@
   }
   renderRunnerList();
 
+  // Sobald echte Anmeldungen da sind (siehe pollLiveData unten), ersetzt diese
+  // Funktion die Beispiel-Läufer:innen durch die echten Namen/Runden/Kilometer
+  // aus /api/live. Die Karten-Punkte der Demo werden dabei entfernt, weil dafür
+  // echte GPS-Positionen nötig wären (noch kein Tracking-Anbieter angebunden --
+  // siehe Hinweis im "integration-note"-Kasten).
+  const trackerActiveCountEl = document.getElementById('tracker-active-count');
+  const integrationNoteEl = document.getElementById('integration-note');
+  function applyRealRunners(leaderboard, totalRunners){
+    usingRealRunners = true;
+
+    if (demoAnimInterval){ clearInterval(demoAnimInterval); demoAnimInterval = null; }
+    if (trackerMap && Object.keys(runnerMarkers).length){
+      Object.values(runnerMarkers).forEach(m => trackerMap.removeLayer(m));
+      Object.keys(runnerMarkers).forEach(k => delete runnerMarkers[k]);
+    }
+
+    runnerData = leaderboard.map((r, i) => ({
+      id: r.id, name: r.name, laps: r.laps, km: r.km,
+      color: runnerColors[i % runnerColors.length],
+    }));
+    renderRunnerList();
+
+    if (trackerActiveCountEl){
+      trackerActiveCountEl.textContent = totalRunners.toLocaleString('de-DE') +
+        (totalRunners === 1 ? ' Läufer:in angemeldet' : ' Läufer:innen angemeldet');
+    }
+    if (integrationNoteEl){
+      integrationNoteEl.innerHTML = '<strong>Live dabei:</strong> Die Liste links zeigt die ' +
+        'echten Anmeldungen. Positionen auf der Karte erscheinen, sobald ein echter ' +
+        'GPS-Tracking-Anbieter angebunden ist.';
+    }
+  }
+
   runnerSearchEl?.addEventListener('input', () => {
     const q = runnerSearchEl.value.trim().toLowerCase();
     let anyVisible = false;
@@ -2354,6 +2394,9 @@
       const data = await res.json();
       if (typeof data.donationGoal === 'number') donationGoal = data.donationGoal;
       applyLiveStats(data.totalLaps, data.fundsRaised);
+      if (data.totalRunners > 0 && Array.isArray(data.leaderboard)){
+        applyRealRunners(data.leaderboard, data.totalRunners);
+      }
     } catch (err) {
       mockTick(); // Backend gerade nicht erreichbar -> Mock-Werte weiterlaufen lassen
     }
