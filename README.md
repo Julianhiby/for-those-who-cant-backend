@@ -25,7 +25,7 @@ for-those-who-cant-backend/
 └── README.md
 ```
 
-## Lokal starten
+## Lokal starten (ohne Docker — schnellster Loop)
 
 Voraussetzung: Python 3.9+ (unter Windows: `py`).
 
@@ -54,6 +54,31 @@ Danach im Browser öffnen:
 
 > Das Backend liefert die Website selbst aus — alles läuft unter **einer**
 > Adresse, kein zweiter Server und keine CORS-Einstellungen nötig.
+
+## Lokal mit Docker (prod-nah, mit eigener Postgres)
+
+Alternative zum obigen Weg — nützlich, wenn du **wie auf Render** testen willst
+(gleiche Linux-Umgebung) und eine **echte, dauerhafte Datenbank** statt der
+flüchtigen SQLite brauchst. Voraussetzung: Docker Desktop installiert.
+
+```bash
+docker compose up --build
+```
+
+Danach: http://localhost:8000. Es startet die App **plus** eine lokale
+Postgres-Datenbank; Anmeldungen/Startnummern bleiben über Neustarts erhalten
+(Volume `pgdata`). Der Code ist per Volume eingehängt und läuft mit `--reload`,
+Änderungen wirken also sofort. Stoppen mit `Strg+C`, Daten löschen mit
+`docker compose down -v`.
+
+> Hinweis: Docker macht den Test-Loop **nicht schneller** als der lokale
+> `uvicorn`-Weg oben — es bringt Prod-Nähe und die lokale Postgres. Für echte
+> E-Mails eine `.env` mit `RESEND_API_KEY` anlegen (sonst Dev-Modus).
+>
+> Unter **Windows** kann das automatische Neuladen (`--reload`) über den
+> Bind-Mount manchmal Datei-Änderungen nicht mitbekommen. Falls eine Änderung
+> nicht greift: Container kurz neu starten (`docker compose restart web`) oder
+> für schnelles Iterieren einfach den lokalen `uvicorn`-Weg (ohne Docker) nutzen.
 
 ## Test-Lauf (Probelauf ohne echtes GPS)
 
@@ -147,3 +172,25 @@ Mails verschickt.
 > Alternativ manuell (ohne Blueprint): **New + → Web Service**, Repo wählen,
 > Build `pip install -r requirements.txt`, Start
 > `uvicorn app:app --app-dir backend --host 0.0.0.0 --port $PORT`.
+
+## Änderungen / Git-Workflow
+
+Nicht direkt auf `main` committen, sondern **pro Änderung ein Branch + Pull Request**:
+
+```bash
+git checkout -b feat/kurzer-name   # neuer Branch
+# ... Änderungen, commit(s) ...
+git push -u origin feat/kurzer-name
+```
+
+Danach auf GitHub den **Pull Request** öffnen (der Push-Befehl zeigt einen Link an),
+Änderungen ansehen und per **Squash-Merge** nach `main` mergen. Vorteile:
+
+- `main` bleibt stabil und deploybar; **Render deployt nur bei Merge nach `main`**
+  (Branch-Pushes lösen keinen Deploy aus).
+- Saubere Historie: **ein Commit pro Feature** auf `main`.
+- Jede Änderung ist als Einheit reviewbar und rücknehmbar.
+
+Einmalig empfohlen in den GitHub-Repo-Einstellungen (*Settings → Pull Requests*):
+**„Allow squash merging"** aktiv, als Standard-Merge-Methode. Für benannte Stände
+optional **Tags/Releases** (z. B. `v0.1 – Anmeldung + Tickets live`).
