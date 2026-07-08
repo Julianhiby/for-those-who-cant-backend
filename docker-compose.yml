@@ -1,0 +1,50 @@
+# Lokales, prod-nahes Setup: App + eigene Postgres-Datenbank.
+#
+# Start:   docker compose up --build
+# Öffnen:  http://localhost:8000
+# Stoppen: Strg+C  (Daten bleiben im Volume 'pgdata' erhalten)
+#
+# Die App nutzt hier eine echte, DAUERHAFTE Postgres (anders als die flüchtige
+# SQLite) -- Anmeldungen/Startnummern überleben also einen Neustart.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ftwc
+      POSTGRES_PASSWORD: ftwc
+      POSTGRES_DB: ftwc
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Wartet, bis die DB wirklich Anfragen annimmt (bevor die App startet).
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ftwc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Verbindung zur Compose-Postgres (Servicename 'db' ist der Hostname).
+      DATABASE_URL: postgresql://ftwc:ftwc@db:5432/ftwc
+    # Optionale Secrets (z. B. RESEND_API_KEY) aus einer .env laden, falls vorhanden.
+    # Ohne .env läuft der E-Mail-Dev-Modus (Mails landen unter backend/dev_emails/).
+    env_file:
+      - path: .env
+        required: false
+    # Live-Reload für die Entwicklung: Code vom Host einhängen und uvicorn mit
+    # --reload starten -> Änderungen wirken sofort, ohne Image-Rebuild.
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./app.py:/app/app.py
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:

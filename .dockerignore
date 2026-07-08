@@ -1,0 +1,28 @@
+# Hält das Image schlank und verhindert, dass Secrets/Artefakte hineingelangen.
+
+# Git & Editor
+.git
+.gitignore
+.claude/
+plans/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Lokale Daten & Geheimnisse -- NIEMALS ins Image
+.env
+*.db
+database.db
+backend/dev_emails/
+*.pem
+*.key
+*.p12
+service-account*.json
+
+# OS
+.DS_Store
+Thumbs.db
