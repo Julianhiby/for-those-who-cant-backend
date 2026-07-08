@@ -30,6 +30,12 @@
     --ember: #F2542D;
     --ember-dim: #C43D1D;
 
+    /* Glas-Flächen: durchscheinend, damit der Hintergrund-Schriftzug überall
+       durchschimmert. Werden zusammen mit backdrop-filter: blur() genutzt. */
+    --glass: rgba(25,21,39,0.55);
+    --glass-2: rgba(34,29,51,0.60);
+    --glass-strong: rgba(16,14,26,0.62);
+
     --display: 'Oswald', sans-serif;
     --body: 'Inter', sans-serif;
     --mono: 'JetBrains Mono', monospace;
@@ -80,7 +86,7 @@
     letter-spacing: 0.03em;
     text-transform: uppercase;
     color: var(--hivis);
-    opacity: 0.05;
+    opacity: 0.075;
     text-align: center;
     width: 130vw;
     transform: rotate(-6deg);
@@ -194,8 +200,7 @@
     padding: 140px 0 80px;
     background:
       radial-gradient(ellipse 900px 500px at 15% 15%, rgba(231,178,62,0.06), transparent 60%),
-      radial-gradient(ellipse 900px 600px at 85% 90%, rgba(242,84,45,0.10), transparent 60%),
-      var(--ink);
+      radial-gradient(ellipse 900px 600px at 85% 90%, rgba(242,84,45,0.10), transparent 60%);
   }
 
   .hero-grid{
@@ -274,7 +279,7 @@
   }
 
   /* ---------- SECTION SHELLS ---------- */
-  section{ padding: 120px 0; position:relative; }
+  section{ padding: 120px 0; position:relative; z-index: 1; }
   .section-head{
     max-width: 640px;
     margin-bottom: 64px;
@@ -291,7 +296,7 @@
 
   /* ---------- VERS-BANNER ---------- */
   .verse-banner{
-    background: var(--ink);
+    background: transparent;
     border-top: 1px solid var(--line-soft);
     border-bottom: 1px solid var(--line-soft);
     padding: 56px 0;
@@ -332,7 +337,7 @@
   }
 
   /* ---------- WARUM ---------- */
-  .why{ background: var(--surface); border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+  .why{ background: transparent; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
   .why-grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -379,7 +384,9 @@
     gap: 28px;
   }
   .format-card{
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--line-soft);
     padding: 40px;
     border-radius: 4px;
@@ -430,7 +437,9 @@
     align-items:center;
   }
   .dedication-verse{
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--line-soft);
     border-left: 3px solid var(--hivis);
     border-radius: 4px;
@@ -459,7 +468,9 @@
     display:inline-flex;
     align-items:center;
     gap: 12px;
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px dashed var(--line-soft);
     border-radius: 4px;
     padding: 14px 20px;
@@ -470,7 +481,7 @@
   .dedication-bib strong{ color: var(--hivis); }
 
   /* ---------- STRECKE ---------- */
-  .course{ background: var(--surface); border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+  .course{ background: transparent; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
   .course-grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -478,7 +489,9 @@
     align-items:center;
   }
   .course-map{
-    background: var(--ink);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--line-soft);
     border-radius: 6px;
     padding: 30px;
@@ -541,7 +554,9 @@
   /* ---------- LIVE TRACKER ---------- */
   .tracker{ }
   .tracker-panel{
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--line-soft);
     border-radius: 6px;
     overflow: hidden;
@@ -696,7 +711,7 @@
 
   .runner-search{
     width: 100%;
-    background: var(--ink);
+    background: var(--glass-strong);
     border: 1px solid var(--line-soft);
     color: var(--paper);
     padding: 11px 14px;
@@ -785,7 +800,7 @@
   }
   .stream-frame{
     aspect-ratio: 16/9;
-    background: var(--ink);
+    background: var(--glass-strong);
     border: 1px solid var(--line-soft);
     border-radius: 6px;
     display:flex;
@@ -807,12 +822,14 @@
   }
 
   /* ---------- ANMELDUNG ---------- */
-  .register{ background: var(--surface); border-top:1px solid var(--line-soft); }
+  .register{ background: transparent; border-top:1px solid var(--line-soft); }
   .reg-toggle{
     display:flex;
     gap: 8px;
     margin-bottom: 36px;
-    background: var(--ink);
+    background: var(--glass-strong);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     padding: 6px;
     border-radius: 4px;
     max-width: 340px;
@@ -852,7 +869,9 @@
   }
   .field input, .field select{
     width:100%;
-    background: var(--ink);
+    background: var(--glass-strong);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--line-soft);
     color: var(--paper);
     padding: 13px 14px;
@@ -915,7 +934,7 @@
     margin-bottom: 10px;
   }
   .sponsor-row input{
-    background: var(--ink);
+    background: var(--glass-strong);
     border: 1px solid var(--line-soft);
     color: var(--paper);
     padding: 11px 12px;
@@ -966,9 +985,11 @@
 
   /* ---------- FOOTER ---------- */
   footer{
-    background: var(--ink);
+    background: transparent;
     border-top: 1px solid var(--line-soft);
     padding: 60px 0 30px;
+    position: relative;
+    z-index: 1;
   }
   .footer-grid{
     display:flex;
@@ -1023,11 +1044,52 @@
   @media (max-width: 900px){
     nav.links{ display:none; }
     .nav-toggle{ display:block; }
-    .why-grid, .format-grid, .course-grid{ grid-template-columns: 1fr; }
+    .why-grid, .format-grid, .course-grid, .dedication-grid{ grid-template-columns: 1fr; }
+    .dedication-grid{ gap: 36px; }
     .tracker-body{ grid-template-columns: 1fr; }
-    .tracker-map{ border-right:none; border-bottom: 1px solid var(--line-soft); }
+    .tracker-map{ border-right:none; border-bottom: 1px solid var(--line-soft); min-height: 300px; }
+    #tracker-map-real{ min-height: 300px; }
+    .tracker-side{ min-height: auto; }
     form.reg-form{ grid-template-columns: 1fr; }
     .impact-row{ grid-template-columns: 1fr; gap: 28px; }
+    /* Routen-Editor ist ein Bearbeitungs-Werkzeug -> auf kleineren Screens weg. */
+    .route-editor-toggle, .route-editor-panel{ display: none !important; }
+  }
+
+  /* ---------- HANDY ---------- */
+  @media (max-width: 600px){
+    .wrap{ padding: 0 18px; }
+    section{ padding: 64px 0; }
+    .hero{ padding: 104px 0 56px; min-height: auto; }
+    .dedication{ padding-top: 64px; padding-bottom: 64px; }
+    .section-head{ margin-bottom: 40px; }
+    .section-head h2{ font-size: clamp(1.7rem, 8vw, 2.2rem); }
+    .verse-banner{ padding: 40px 0; }
+
+    /* Hero-Stats: nicht mehr aus dem Bild laufen */
+    .hero-stats{ gap: 20px 28px; flex-wrap: wrap; }
+    .hero-stats .stat-num{ font-size: 1.35rem; }
+    .hero-sub{ font-size: 1rem; }
+
+    /* Buttons als griffige Tap-Ziele (volle Breite) */
+    .hero-cta{ flex-direction: column; align-items: stretch; gap: 12px; }
+    .hero-cta .btn{ width: 100%; justify-content: center; }
+    .reg-submit{ width: 100%; }
+
+    .format-card{ padding: 28px 22px; }
+    .why-quote{ padding-left: 18px; }
+    .runner-list{ max-height: 240px; }
+
+    /* Footer kompakter */
+    footer{ padding: 48px 0 24px; }
+    .footer-cols{ gap: 32px; }
+  }
+
+  @media (max-width: 380px){
+    .hero h1{ font-size: 2.3rem; }
+    .eyebrow{ font-size: 0.66rem; }
+    .hero-stats{ gap: 16px 20px; }
+    .format-specs{ grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -1454,16 +1516,31 @@
   /* ---------------- Mobile nav ---------------- */
   const toggle = document.querySelector('.nav-toggle');
   const links = document.querySelector('nav.links');
-  toggle?.addEventListener('click', () => {
-    const open = links.style.display === 'flex';
-    links.style.display = open ? 'none' : 'flex';
+
+  function openMenu(){
+    links.style.display = 'flex';
     links.style.flexDirection = 'column';
     links.style.position = 'absolute';
     links.style.top = '64px';
     links.style.left = '0';
     links.style.right = '0';
     links.style.background = 'rgba(18,21,28,0.98)';
+    links.style.backdropFilter = 'blur(10px)';
     links.style.padding = '20px 24px';
+  }
+  // Alle Inline-Styles entfernen -> es greift wieder das CSS: mobil per Media
+  // Query versteckt, am Desktop sichtbar. So bleibt nie ein Zustand hängen.
+  function closeMenu(){ links.removeAttribute('style'); }
+
+  toggle?.addEventListener('click', () => {
+    if (links.style.display === 'flex') closeMenu(); else openMenu();
+  });
+  // Menü nach Klick auf einen Link schließen.
+  links?.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
+  // Beim Zurückvergrößern auf Desktop die per JS gesetzten Inline-Styles entfernen,
+  // damit die normale Desktop-Navigation wieder erscheint.
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900) links.removeAttribute('style');
   });
 
   /* ---------------- FAQ accordion ---------------- */
