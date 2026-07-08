@@ -6,6 +6,25 @@
 <title>For Those Who Can't — 24h Charity Ultramarathon</title>
 <meta name="description" content="Ein 24-Stunden Charity-Ultramarathon. Jede Runde zählt. Jede Runde hilft.">
 
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+
+<!-- Social-Share-Vorschau (WhatsApp/Instagram/Facebook/Twitter). Feste
+     Produktions-URL, da diese Datei statisch ausgeliefert wird -- bei eigener
+     Domain hier die neue Adresse eintragen. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://for-those-who-cant-backend.onrender.com/">
+<meta property="og:title" content="For Those Who Can't — 24h Charity-Ultramarathon">
+<meta property="og:description" content="24 Stunden. Eine Runde nach der anderen. Wir laufen, so lange wir können — stellvertretend für alle, die nicht laufen können.">
+<meta property="og:image" content="https://for-those-who-cant-backend.onrender.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="For Those Who Can't — 24h Charity-Ultramarathon">
+<meta name="twitter:description" content="24 Stunden. Eine Runde nach der anderen. Jede Runde zählt. Jede Runde hilft.">
+<meta name="twitter:image" content="https://for-those-who-cant-backend.onrender.com/assets/og-image.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -268,6 +287,40 @@
     letter-spacing: 0.08em;
   }
 
+  .hero-countdown{
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line-soft);
+    max-width: 360px;
+  }
+  .countdown-label{
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--paper-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .countdown-nums{
+    display:flex;
+    gap: 20px;
+    font-family: var(--mono);
+  }
+  .countdown-nums div{ text-align:center; }
+  .countdown-nums span{
+    display:block;
+    font-size: 1.5rem;
+    font-weight:700;
+    color: var(--hivis);
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown-nums small{
+    font-size: 0.62rem;
+    color: var(--paper-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
   .runner-dot{
     fill: var(--ember);
     filter: drop-shadow(0 0 5px rgba(242,84,45,0.8));
@@ -277,7 +330,7 @@
     .runner-dot{ animation: none !important; }
     .track-fill{ transition: none; }
     .reveal{ opacity: 1 !important; transform: none !important; transition: none !important; }
-    .hero .eyebrow, .hero h1, .hero-sub, .hero-cta, .hero-stats{ animation: none !important; }
+    .hero .eyebrow, .hero h1, .hero-sub, .hero-cta, .hero-stats, .hero-countdown{ animation: none !important; }
     .hero::before{ animation: none !important; }
   }
 
@@ -769,6 +822,20 @@
     font-size: 0.82rem;
     margin-top: 4px;
   }
+  .donation-bar{
+    margin-top: 14px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--line-soft);
+    overflow: hidden;
+  }
+  .donation-bar-fill{
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--ember), var(--hivis));
+    transition: width 1.1s cubic-bezier(.22,.61,.36,1);
+  }
 
   .integration-note{
     margin-top: 20px;
@@ -904,6 +971,47 @@
     text-decoration: underline;
     font-weight: 600;
   }
+
+  /* ---------- Teilen-Buttons ---------- */
+  .share-row{
+    margin-top: 14px;
+    display:flex;
+    align-items:center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .share-label{
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--paper-dim);
+    margin-right: 2px;
+  }
+  .share-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    padding: 7px 12px;
+    border-radius: 999px;
+    transition: border-color .2s, color .2s;
+  }
+  .share-btn:hover{ border-color: var(--hivis); color: var(--hivis); }
+  .share-page-btn{
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    color: var(--paper-dim);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    padding: 7px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: border-color .2s, color .2s;
+  }
+  .share-page-btn:hover{ border-color: var(--hivis); color: var(--hivis); }
   .reg-error{
     display:none;
     margin-top: 20px;
@@ -1028,6 +1136,7 @@
     font-size: 0.72rem;
     color: var(--paper-dim);
   }
+  .footer-bottom a:hover{ color: var(--hivis); }
 
   /* ---------- RESPONSIVE ---------- */
   @media (max-width: 900px){
@@ -1059,6 +1168,9 @@
     .hero-stats{ gap: 20px 28px; flex-wrap: wrap; }
     .hero-stats .stat-num{ font-size: 1.35rem; }
     .hero-sub{ font-size: 1rem; }
+    .hero-countdown{ margin-top: 24px; padding-top: 18px; }
+    .countdown-nums{ gap: 14px; }
+    .countdown-nums span{ font-size: 1.25rem; }
 
     /* Buttons als griffige Tap-Ziele (volle Breite) */
     .hero-cta{ flex-direction: column; align-items: stretch; gap: 12px; }
@@ -1102,11 +1214,13 @@
   .hero h1,
   .hero-sub,
   .hero-cta,
-  .hero-stats{ animation: heroRise .9s cubic-bezier(.22,.61,.36,1) both; }
+  .hero-stats,
+  .hero-countdown{ animation: heroRise .9s cubic-bezier(.22,.61,.36,1) both; }
   .hero h1{ animation-delay: .08s; }
   .hero-sub{ animation-delay: .20s; }
   .hero-cta{ animation-delay: .32s; }
   .hero-stats{ animation-delay: .44s; }
+  .hero-countdown{ animation-delay: .56s; }
 
   /* Ambientes, langsam schwebendes Glühen im Hero */
   .hero::before{
@@ -1186,6 +1300,16 @@
         <div>
           <div class="stat-num" id="stat-funds">—</div>
           <div class="stat-label">Gesammelte Spenden</div>
+        </div>
+      </div>
+
+      <div class="hero-countdown" id="hero-countdown">
+        <div class="countdown-label">Noch bis zum Start</div>
+        <div class="countdown-nums">
+          <div><span id="cd-days">—</span><small>Tage</small></div>
+          <div><span id="cd-hours">—</span><small>Std</small></div>
+          <div><span id="cd-mins">—</span><small>Min</small></div>
+          <div><span id="cd-secs">—</span><small>Sek</small></div>
         </div>
       </div>
     </div>
@@ -1362,6 +1486,7 @@
         <div class="live-badge"><span class="pulse"></span>LIVE — RENNEN LÄUFT</div>
         <div class="clock-num">Stunde <span id="race-hour">10</span> / 24 · <span id="race-clock">10:14:02</span></div>
         <div style="color:var(--paper-dim);">184 Läufer:innen aktiv getrackt</div>
+        <button type="button" class="share-page-btn" id="share-page-btn" title="Seite teilen">↗ Teilen</button>
       </div>
 
       <div class="tracker-body">
@@ -1394,7 +1519,8 @@
 
           <div class="donation-ticker">
             <div class="amount" id="funds-amount">28.470 €</div>
-            <div class="of">von 40.000 € Spendenziel</div>
+            <div class="of">von <span id="funds-goal">25.000 €</span> Spendenziel</div>
+            <div class="donation-bar"><div class="donation-bar-fill" id="donation-bar-fill"></div></div>
           </div>
 
           <div class="integration-note">
@@ -1544,7 +1670,7 @@
     </div>
     <div class="footer-bottom">
       <div>© 2027 FOR THOSE WHO CAN'T</div>
-      <div>Impressum · Datenschutz</div>
+      <div><a href="/impressum.html">Impressum</a> · <a href="/datenschutz.html">Datenschutz</a></div>
     </div>
   </div>
 </footer>
@@ -1552,6 +1678,58 @@
 <script>
 (() => {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- Teilen (WhatsApp / Link kopieren / natives Teilen-Menü) ---------------- */
+  const SHARE_URL = location.origin + '/';
+  const SHARE_TEXT = 'Ich bin dabei bei "For Those Who Can\'t" — einem 24h-Charity-Ultramarathon. Sei auch du dabei oder unterstütze uns!';
+
+  // WhatsApp-Link + "Link kopieren"-Button (ohne umschließendes Element).
+  function shareButtonsInner(){
+    const waHref = 'https://wa.me/?text=' + encodeURIComponent(SHARE_TEXT + ' ' + SHARE_URL);
+    return '<a class="share-btn" href="' + waHref + '" target="_blank" rel="noopener">📲 WhatsApp</a>' +
+      '<button type="button" class="share-btn share-copy" data-url="' + SHARE_URL + '">🔗 Link kopieren</button>';
+  }
+  // Dieselben Buttons, mit optionalem Label, in einer eigenen Zeile.
+  function shareRowHtml(label){
+    return '<div class="share-row">' +
+      (label ? '<span class="share-label">' + label + '</span>' : '') +
+      shareButtonsInner() +
+      '</div>';
+  }
+
+  // Event-Delegation, damit "Link kopieren" auch nach innerHTML-Austausch
+  // (z. B. der Erfolgsmeldung nach der Anmeldung) weiter funktioniert.
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.share-copy');
+    if (!btn) return;
+    const original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(btn.dataset.url);
+      btn.textContent = '✓ Kopiert!';
+    } catch (err) {
+      btn.textContent = 'Kopieren fehlgeschlagen';
+    }
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  });
+
+  // Teilen-Button im Live-Tracker: nutzt das native Teilen-Menü (Handy), sonst
+  // Fallback auf WhatsApp/Link-kopieren direkt daneben eingeblendet.
+  const sharePageBtn = document.getElementById('share-page-btn');
+  sharePageBtn?.addEventListener('click', async () => {
+    if (navigator.share){
+      try { await navigator.share({ title: document.title, text: SHARE_TEXT, url: SHARE_URL }); }
+      catch (err) { /* Nutzer hat abgebrochen -- kein Fehler */ }
+      return;
+    }
+    let popover = document.getElementById('share-popover');
+    if (popover){ popover.remove(); return; }
+    popover = document.createElement('div');
+    popover.id = 'share-popover';
+    popover.className = 'share-row';
+    popover.style.marginTop = '10px';
+    popover.innerHTML = shareButtonsInner();
+    sharePageBtn.insertAdjacentElement('afterend', popover);
+  });
 
   /* ---------------- Mobile nav ---------------- */
   const toggle = document.querySelector('.nav-toggle');
@@ -1713,7 +1891,8 @@
         'Startnummer: <strong>' + data.bib_number + '</strong><br>' +
         'Wir haben dir außerdem eine Bestätigung per E-Mail geschickt.<br>' +
         '🎟️ <a href="' + API_BASE_URL + data.ticket_url + '" target="_blank">Startticket mit QR-Code öffnen</a> · ' +
-        '🤖 <a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>';
+        '🤖 <a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>' +
+        shareRowHtml('Sag\'s weiter:');
       successEl.classList.add('show');
       submitBtn.textContent = 'Angemeldet ✓';
       // Felder leeren, damit klar ist, dass die Anmeldung raus ist.
@@ -2105,6 +2284,20 @@
   const fundsAmount = document.getElementById('funds-amount');
   const badgeLaps = document.getElementById('badge-laps');
 
+  // Spendenziel: Default passend zum Backend-Standard (DONATION_GOAL=25000),
+  // wird durch die echte Antwort von /api/live überschrieben (siehe pollLiveData).
+  let donationGoal = 25000;
+  const donationBarFill = document.getElementById('donation-bar-fill');
+  const fundsGoalEl = document.getElementById('funds-goal');
+
+  function updateDonationBar(funds){
+    if (donationBarFill){
+      const pct = Math.max(0, Math.min(100, (funds / donationGoal) * 100));
+      donationBarFill.style.width = pct + '%';
+    }
+    if (fundsGoalEl) fundsGoalEl.textContent = formatEUR(Math.round(donationGoal));
+  }
+
   function formatEUR(n){
     return n.toLocaleString('de-DE') + ' €';
   }
@@ -2125,6 +2318,7 @@
 
   let statsAnimated = false;
   function applyLiveStats(laps, funds){
+    updateDonationBar(funds);
     // Beim ersten Mal weich hochzählen, danach direkt setzen (Live-Updates).
     if (!statsAnimated){
       statsAnimated = true;
@@ -2158,6 +2352,7 @@
       const res = await fetch(API_BASE_URL + '/api/live');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      if (typeof data.donationGoal === 'number') donationGoal = data.donationGoal;
       applyLiveStats(data.totalLaps, data.fundsRaised);
     } catch (err) {
       mockTick(); // Backend gerade nicht erreichbar -> Mock-Werte weiterlaufen lassen
@@ -2179,6 +2374,31 @@
     raceHour.textContent = Math.min(h,24);
   }
   setInterval(tick, 1000);
+
+  /* ---------------- Countdown bis zum Event-Start ---------------- */
+  const EVENT_START = new Date('2027-06-13T12:00:00+02:00');
+  const cdDays = document.getElementById('cd-days');
+  const cdHours = document.getElementById('cd-hours');
+  const cdMins = document.getElementById('cd-mins');
+  const cdSecs = document.getElementById('cd-secs');
+  const heroCountdown = document.getElementById('hero-countdown');
+
+  function tickCountdown(){
+    const diff = EVENT_START.getTime() - Date.now();
+    if (diff <= 0){
+      if (heroCountdown){
+        heroCountdown.querySelector('.countdown-label').textContent = 'Der Lauf läuft gerade! 🏃';
+        heroCountdown.querySelector('.countdown-nums').style.display = 'none';
+      }
+      return;
+    }
+    const totalSec = Math.floor(diff / 1000);
+    cdDays.textContent = Math.floor(totalSec / 86400);
+    cdHours.textContent = String(Math.floor((totalSec % 86400) / 3600)).padStart(2, '0');
+    cdMins.textContent = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    cdSecs.textContent = String(totalSec % 60).padStart(2, '0');
+  }
+  if (cdDays){ tickCountdown(); setInterval(tickCountdown, 1000); }
 
   /* ---------------- Scroll-Reveal (Elemente fliegen sanft ein) ---------------- */
   if (!reduceMotion && 'IntersectionObserver' in window){
