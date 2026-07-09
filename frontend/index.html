@@ -1746,7 +1746,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q"><span>Kann ich auch ohne zu laufen einfach spenden?</span><span class="plus">+</span></button>
-        <div class="faq-a"><div class="faq-a-inner">Ja! Am einfachsten unterstützt du eine:n Läufer:in als Sponsor:in mit einem Betrag pro gelaufener Runde — das kannst du direkt bei der Anmeldung eintragen. Auch reine Unterstützer:innen sind herzlich willkommen: Schreib uns einfach eine E-Mail (Kontakt unten im Footer).</div></div>
+        <div class="faq-a"><div class="faq-a-inner">Ja! Am einfachsten unterstützt du eine:n Läufer:in als Sponsor:in mit einem Betrag pro gelaufener Runde — entweder direkt bei der Anmeldung oder über den persönlichen Sponsor-Link, den jede:r Läufer:in nach der Anmeldung bekommt. Auch reine Unterstützer:innen sind herzlich willkommen: Schreib uns einfach eine E-Mail (Kontakt unten im Footer).</div></div>
       </div>
     </div>
   </div>
@@ -2008,12 +2008,16 @@
       if (!res.ok) throw new Error('Server antwortete mit Fehler ' + res.status);
       const data = await res.json();
 
+      const sponsorUrl = API_BASE_URL + '/sponsor.html?runner=' + data.id;
       successEl.innerHTML =
         'Danke, ' + data.name + '! Deine Anmeldung wurde gespeichert. ' +
         'Startnummer: <strong>' + data.bib_number + '</strong><br>' +
         'Wir haben dir außerdem eine Bestätigung per E-Mail geschickt.<br>' +
         '🎟️ <a href="' + API_BASE_URL + data.ticket_url + '" target="_blank">Startticket mit QR-Code öffnen</a> · ' +
         '🤖 <a href="' + API_BASE_URL + data.wallet_google_url + '">Zu Google Wallet hinzufügen</a>' +
+        '<div class="share-row"><span class="share-label">💛 Dein persönlicher Sponsor-Link:</span>' +
+        '<a class="share-btn" href="' + sponsorUrl + '" target="_blank">Öffnen</a>' +
+        '<button type="button" class="share-btn share-copy" data-url="' + sponsorUrl + '">🔗 Link kopieren</button></div>' +
         shareRowHtml('Sag\'s weiter:');
       successEl.classList.add('show');
       submitBtn.textContent = 'Angemeldet ✓';

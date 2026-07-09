@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsor werden — For Those Who Can't</title>
+<meta name="description" content="Unterstütze eine:n Läufer:in beim 24h-Spendenlauf mit einem Betrag pro gelaufener Runde.">
+<link rel="icon" href="/assets/favicon.ico">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink: #100E1A;
+    --line-soft: #2C2640;
+    --paper: #EDE8DD;
+    --paper-dim: #ADA3BE;
+    --hivis: #E7B23E;
+    --hivis-dim: #B8872A;
+    --ember: #F2542D;
+
+    --display: 'Oswald', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--body);
+    line-height: 1.65;
+  }
+  a{ color: var(--hivis); }
+  .wrap{ max-width: 620px; margin: 0 auto; padding: 64px 24px 100px; }
+  .back{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family: var(--mono); font-size:0.8rem; letter-spacing:0.04em;
+    color: var(--paper-dim); margin-bottom: 40px; text-decoration:none;
+  }
+  .back:hover{ color: var(--hivis); }
+  .eyebrow{
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--hivis); margin-bottom: 14px;
+  }
+  h1{
+    font-family: var(--display); text-transform:uppercase;
+    font-size: clamp(1.8rem, 5vw, 2.4rem); line-height:1.05; margin-bottom: 14px;
+  }
+  .intro{ color: var(--paper-dim); margin-bottom: 32px; }
+
+  .runner-box{
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--hivis);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin-bottom: 32px;
+  }
+  .runner-box .k{
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--paper-dim); margin-bottom: 4px;
+  }
+  .runner-box .v{
+    font-family: var(--display); font-size: 1.4rem; font-weight:500;
+  }
+  .runner-box .v small{
+    font-family: var(--mono); font-size: 0.8rem; color: var(--hivis); margin-left: 10px;
+  }
+
+  form{ display:grid; gap: 20px; }
+  .field label{
+    display:block; font-family: var(--mono); font-size: 0.72rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--paper-dim); margin-bottom: 8px;
+  }
+  .field input{
+    width:100%; background: transparent;
+    border: 1px solid var(--line-soft); color: var(--paper);
+    padding: 13px 14px; border-radius: 3px; font-size: 0.95rem;
+    font-family: var(--body); transition: border-color 0.2s;
+  }
+  .field input:focus{ outline:none; border-color: var(--hivis); }
+
+  .calc-hint{
+    font-family: var(--mono); font-size: 0.8rem; color: var(--paper-dim);
+    border: 1px dashed var(--line-soft); border-radius: 4px; padding: 12px 16px;
+  }
+  .calc-hint strong{ color: var(--hivis); font-weight:700; }
+
+  .submit-btn{
+    background: var(--ember); color: var(--ink);
+    font-family: var(--mono); font-weight:700; font-size: 0.88rem;
+    letter-spacing: 0.03em; padding: 16px 32px; border-radius: 3px;
+    border:none; cursor:pointer; transition: background 0.2s, transform 0.15s;
+  }
+  .submit-btn:hover{ background: var(--hivis); transform: translateY(-2px); }
+  .submit-btn:disabled{ opacity: 0.6; cursor: default; transform:none; }
+
+  .msg{
+    display:none; padding: 16px 18px; border-radius: 4px; font-size: 0.9rem;
+  }
+  .msg.show{ display:block; }
+  .msg.ok{ background: rgba(231,178,62,0.08); border: 1px solid var(--hivis-dim); color: var(--hivis); }
+  .msg.err{ background: rgba(242,84,45,0.08); border: 1px solid var(--ember); color: var(--ember); }
+
+  .note{
+    margin-top: 28px; font-family: var(--mono); font-size: 0.74rem;
+    color: var(--paper-dim); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Zur Startseite</a>
+  <div class="eyebrow">Sponsor werden</div>
+  <h1>Jede Runde zählt.<br>Auch deine Zusage.</h1>
+  <p class="intro">
+    Beim 24h-Spendenlauf <strong style="color:var(--paper)">For Those Who Can't</strong>
+    sammeln Läufer:innen pro gelaufener Runde Spenden. Du legst einen Betrag pro Runde
+    fest — je mehr Runden „deine" Läuferin oder „dein" Läufer schafft, desto größer
+    wird deine Unterstützung.
+  </p>
+
+  <div class="runner-box" id="runner-box" style="display:none;">
+    <div class="k">Du unterstützt</div>
+    <div class="v"><span id="runner-name">…</span><small id="runner-bib"></small></div>
+  </div>
+
+  <div class="msg err" id="load-error">
+    Dieser Sponsor-Link ist ungültig oder die Anmeldung wurde nicht gefunden.
+    Bitte frag die Läuferin/den Läufer nach dem aktuellen Link —
+    oder <a href="/#anmeldung">melde dich selbst zum Lauf an</a>.
+  </div>
+
+  <form id="sponsor-form" style="display:none;">
+    <div class="field">
+      <label for="sp-name">Dein Name</label>
+      <input type="text" id="sp-name" required placeholder="z. B. Oma Erika oder Firma Muster GmbH">
+    </div>
+    <div class="field">
+      <label for="sp-email">Deine E-Mail (optional)</label>
+      <input type="email" id="sp-email" placeholder="Für Rückfragen und die Abrechnung nach dem Event">
+    </div>
+    <div class="field">
+      <label for="sp-amount">Betrag pro gelaufener Runde (€)</label>
+      <input type="number" id="sp-amount" required min="0.5" step="0.5" placeholder="z. B. 2,50">
+    </div>
+    <div class="calc-hint" id="calc-hint">
+      Zur Orientierung: Eine Runde ist 5&nbsp;km lang. Viele schaffen 20–40 Runden in 24&nbsp;Stunden.
+    </div>
+    <button type="submit" class="submit-btn" id="sp-submit">Zusage abschicken →</button>
+    <div class="msg ok" id="sp-success"></div>
+    <div class="msg err" id="sp-error"></div>
+  </form>
+
+  <p class="note">
+    Deine Zusage ist eine Absichtserklärung, keine sofortige Zahlung. Nach dem Event
+    melden wir uns mit der Rundenzahl und den Spendendetails. Fragen? Kontakt im
+    <a href="/impressum.html">Impressum</a>.
+  </p>
+</div>
+
+<script>
+(() => {
+  const runnerId = new URLSearchParams(location.search).get('runner');
+  const runnerBox = document.getElementById('runner-box');
+  const loadError = document.getElementById('load-error');
+  const form = document.getElementById('sponsor-form');
+  const nameEl = document.getElementById('runner-name');
+  const bibEl = document.getElementById('runner-bib');
+  const amountEl = document.getElementById('sp-amount');
+  const calcHint = document.getElementById('calc-hint');
+  const submitBtn = document.getElementById('sp-submit');
+  const successEl = document.getElementById('sp-success');
+  const errorEl = document.getElementById('sp-error');
+
+  let runnerName = '';
+
+  async function loadRunner(){
+    if (!runnerId){ loadError.classList.add('show'); return; }
+    try {
+      const res = await fetch('/api/runners/' + encodeURIComponent(runnerId));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const r = await res.json();
+      runnerName = r.type === 'team' ? (r.team_name || r.name) : r.name;
+      nameEl.textContent = runnerName;
+      bibEl.textContent = r.bib_number ? 'Startnummer ' + r.bib_number : '';
+      runnerBox.style.display = 'block';
+      form.style.display = 'grid';
+    } catch (err) {
+      loadError.classList.add('show');
+    }
+  }
+  loadRunner();
+
+  // Live-Vorschau: macht das Pro-Runde-Prinzip greifbar.
+  const eur = n => n.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €';
+  amountEl.addEventListener('input', () => {
+    const a = parseFloat(amountEl.value.replace(',', '.'));
+    if (a > 0){
+      calcHint.innerHTML = 'Bei z.&nbsp;B. 30 Runden wären das <strong>' + eur(a * 30) +
+        '</strong> — bei 40 Runden <strong>' + eur(a * 40) + '</strong>.';
+    } else {
+      calcHint.textContent = 'Zur Orientierung: Eine Runde ist 5 km lang. Viele schaffen 20–40 Runden in 24 Stunden.';
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    successEl.classList.remove('show');
+    errorEl.classList.remove('show');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Wird gesendet …';
+
+    // Der Gratis-Server kann nach Leerlauf ~1 Min zum Aufwachen brauchen.
+    const wakeHint = setTimeout(() => {
+      errorEl.textContent = 'Server wird geweckt – das kann beim ersten Mal bis zu einer Minute dauern …';
+      errorEl.classList.add('show');
+    }, 4000);
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 70000);
+
+    const amount = parseFloat(amountEl.value.replace(',', '.'));
+    try {
+      const res = await fetch('/api/runners/' + encodeURIComponent(runnerId) + '/sponsors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sponsor_name: document.getElementById('sp-name').value.trim(),
+          sponsor_email: document.getElementById('sp-email').value.trim() || null,
+          amount_per_lap: amount,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('Server antwortete mit Fehler ' + res.status);
+
+      errorEl.classList.remove('show');
+      successEl.innerHTML = 'Danke, <strong>' + document.getElementById('sp-name').value.trim() +
+        '</strong>! Du unterstützt ' + runnerName + ' mit <strong>' + eur(amount) +
+        ' pro Runde</strong>. 💛';
+      successEl.classList.add('show');
+      form.querySelectorAll('input, button').forEach(el => el.style.display = 'none');
+      calcHint.style.display = 'none';
+      form.querySelectorAll('label').forEach(el => el.style.display = 'none');
+    } catch (err) {
+      errorEl.textContent = err.name === 'AbortError'
+        ? 'Der Server hat zu lange nicht geantwortet. Bitte versuch es gleich noch einmal.'
+        : 'Etwas ist schiefgelaufen (' + err.message + '). Bitte versuch es gleich noch einmal.';
+      errorEl.classList.add('show');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Zusage abschicken →';
+    } finally {
+      clearTimeout(wakeHint);
+      clearTimeout(abortTimer);
+    }
+  });
+})();
+</script>
+</body>
+</html>
