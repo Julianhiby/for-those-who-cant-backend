@@ -1419,10 +1419,10 @@
     <div class="why-copy">
       <p>
         <strong>For Those Who Can't</strong> ist ein 24-Stunden-Ultramarathon, der komplett als
-        Spendenlauf ausgetragen wird. Der komplette Erlös geht ungekürzt an [Name der Organisation /
-        des Zwecks einsetzen] — für Menschen, die aus gesundheitlichen, wirtschaftlichen oder anderen
-        Gründen selbst nicht die Möglichkeit haben zu laufen, sich zu bewegen oder für sich selbst
-        einzustehen.
+        Spendenlauf ausgetragen wird. Der komplette Erlös geht ungekürzt an einen wohltätigen
+        Zweck — welche Organisation wir unterstützen, geben wir in Kürze hier bekannt. Es geht
+        um Menschen, die aus gesundheitlichen, wirtschaftlichen oder anderen Gründen selbst
+        nicht die Möglichkeit haben zu laufen, sich zu bewegen oder für sich selbst einzustehen.
       </p>
       <p>
         Jede Runde, die auf der Strecke gelaufen wird, ist sichtbar — für alle, live, in Echtzeit.
@@ -1604,7 +1604,9 @@
             <div class="n" id="badge-laps">1.472</div>
             <div class="l">Runden gesamt gelaufen</div>
           </div>
-          <button type="button" class="route-editor-toggle" id="route-editor-toggle">✏ Route selbst einzeichnen</button>
+          <!-- Bearbeitungswerkzeug für Organisator:innen -- wird nur sichtbar,
+               wenn die Seite mit ?edit=1 aufgerufen wird (z. B. /?edit=1). -->
+          <button type="button" class="route-editor-toggle" id="route-editor-toggle" hidden>✏ Route selbst einzeichnen</button>
           <div class="route-editor-panel" id="route-editor-panel">
             <div class="route-editor-hint">
               Klicke auf die Karte, um nacheinander Punkte entlang deiner echten Strecke zu setzen.
@@ -1642,7 +1644,8 @@
             <h4 style="margin-top:24px;">Live-Stream</h4>
             <div class="stream-frame">
               <div class="play-icon">▶</div>
-              <div>Live-Stream-Platzhalter<br>Ersetze diesen Block mit einem YouTube-/Twitch-Embed-iframe, sobald der Stream-Link feststeht.</div>
+              <!-- Für später: diesen Block durch ein YouTube-/Twitch-Embed-iframe ersetzen, sobald der Stream-Link feststeht. -->
+              <div>Der Live-Stream startet hier am Eventtag —<br>13. Juni 2027, 12:00 Uhr.</div>
             </div>
           </div>
         </div>
@@ -1739,11 +1742,11 @@
       </div>
       <div class="faq-item">
         <button class="faq-q"><span>Wohin gehen die Spenden genau?</span><span class="plus">+</span></button>
-        <div class="faq-a"><div class="faq-a-inner">100 % der Startgebühren und zusätzlichen Spenden gehen ungekürzt an [Name der Organisation]. Nach dem Event veröffentlichen wir eine transparente Abrechnung.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">100 % der Startgebühren und zusätzlichen Spenden gehen ungekürzt an den guten Zweck. Die Partner-Organisation geben wir in Kürze bekannt — nach dem Event veröffentlichen wir eine transparente Abrechnung.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q"><span>Kann ich auch ohne zu laufen einfach spenden?</span><span class="plus">+</span></button>
-        <div class="faq-a"><div class="faq-a-inner">Ja, jederzeit — auch während des laufenden Events über den Spenden-Button oben in der Navigation. Auch reine Unterstützer:innen sind herzlich willkommen.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">Ja! Am einfachsten unterstützt du eine:n Läufer:in als Sponsor:in mit einem Betrag pro gelaufener Runde — das kannst du direkt bei der Anmeldung eintragen. Auch reine Unterstützer:innen sind herzlich willkommen: Schreib uns einfach eine E-Mail (Kontakt unten im Footer).</div></div>
       </div>
     </div>
   </div>
@@ -1772,7 +1775,8 @@
         </div>
         <div class="footer-col">
           <h5>Kontakt</h5>
-          <a href="mailto:info@forthosewhocant-run.de">info@forthosewhocant-run.de</a>
+          <!-- Später durch info@<eigene Domain> ersetzen, sobald die Domain samt Postfach eingerichtet ist. -->
+          <a href="mailto:hibyjulian@gmail.com">hibyjulian@gmail.com</a>
         </div>
       </div>
     </div>
@@ -2242,12 +2246,18 @@
     // Positions-Updates (z. B. per Polling/Websocket) die Marker bewegen.
 
     /* ---- Routen-Editor: eigene Punkte per Klick setzen ---- */
+    // Werkzeug für Organisator:innen, nicht für Besucher:innen: der Button ist
+    // im Markup versteckt (hidden) und erscheint nur, wenn die Seite mit
+    // ?edit=1 aufgerufen wird (z. B. https://.../?edit=1).
     let editMode = false;
     let drawnPoints = [];
     let draftLine = null;
     let draftMarkers = [];
 
     const editToggleBtn = document.getElementById('route-editor-toggle');
+    if (new URLSearchParams(location.search).has('edit')){
+      editToggleBtn?.removeAttribute('hidden');
+    }
     const editPanel = document.getElementById('route-editor-panel');
     const editOutput = document.getElementById('route-editor-output');
     const editUndoBtn = document.getElementById('route-undo');
