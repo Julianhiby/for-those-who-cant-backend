@@ -887,58 +887,6 @@
     display:flex; align-items:center; justify-content:center;
   }
 
-  /* ---------- SHOP ---------- */
-  .shop{ background: transparent; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
-  .shop-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-  }
-  .shop-card{
-    background: transparent;
-    border: 1px solid var(--line-soft);
-    border-radius: 4px;
-    padding: 28px;
-    transition: border-color 0.25s, transform 0.25s;
-  }
-  .shop-card:hover{ border-color: var(--hivis-dim); transform: translateY(-4px); }
-  .shop-card img{
-    width: 100%;
-    max-height: 320px;
-    object-fit: contain;
-    margin-bottom: 20px;
-  }
-  .shop-card h3{
-    font-family: var(--display);
-    font-weight:500;
-    font-size: 1.25rem;
-    margin-bottom: 8px;
-  }
-  .shop-card p{ color: var(--paper-dim); margin-bottom: 18px; }
-  .shop-meta{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap: wrap;
-    gap: 14px;
-  }
-  .shop-badge{
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--hivis);
-    border: 1px solid var(--hivis-dim);
-    border-radius: 999px;
-    padding: 6px 14px;
-  }
-  .shop-note{
-    margin-top: 28px;
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    color: var(--paper-dim);
-  }
-
   /* ---------- ANMELDUNG ---------- */
   .register{ background: transparent; border-top:1px solid var(--line-soft); }
   .reg-toggle{
@@ -1200,7 +1148,7 @@
   @media (max-width: 900px){
     nav.links{ display:none; }
     .nav-toggle{ display:block; }
-    .why-grid, .format-grid, .course-grid, .dedication-grid, .shop-grid{ grid-template-columns: 1fr; }
+    .why-grid, .format-grid, .course-grid, .dedication-grid{ grid-template-columns: 1fr; }
     .dedication-grid{ gap: 36px; }
     .tracker-body{ grid-template-columns: 1fr; }
     .tracker-map{ border-right:none; border-bottom: 1px solid var(--line-soft); min-height: 300px; }
@@ -1330,7 +1278,6 @@
       <a href="#widmung">Für wen</a>
       <a href="#strecke">Strecke</a>
       <a href="#live">Live-Tracker</a>
-      <a href="#shop">Shop</a>
       <a href="#faq">FAQ</a>
     </nav>
     <a href="#anmeldung" class="nav-cta">Anmelden</a>
@@ -1608,47 +1555,6 @@
   </div>
 </section>
 
-<!-- ============ SHOP ============ -->
-<section class="shop" id="shop">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Shop</div>
-      <h2>Lauf-Shirt &amp; Shorts.<br>Mit Vers am Seitensaum.</h2>
-      <p>
-        Unser Event-Merch trägt den Schriftzug vorne und Hebräer 12,1 am Seitensaum —
-        „Lasst uns laufen mit Geduld … und aufsehen auf Jesus, den Anfänger und Vollender
-        des Glaubens." Der Shop ist noch in Vorbereitung — bei Interesse einfach melden,
-        wir sagen Bescheid, sobald bestellt werden kann.
-      </p>
-    </div>
-
-    <div class="shop-grid">
-      <div class="shop-card">
-        <img src="/assets/shop/tshirt-mockup.png" alt="Mockup: For-Those-Who-Can't-T-Shirt mit Hebräer 12,1 am Seitensaum" loading="lazy">
-        <h3>„For Those Who Can't" T-Shirt</h3>
-        <p>Schriftzug vorne, Hebräer 12,1 vertikal am linken Seitensaum.</p>
-        <div class="shop-meta">
-          <span class="shop-badge">Demnächst erhältlich</span>
-          <a class="btn btn-ghost" href="mailto:info@forthosewhocant-run.de?subject=Interesse%20am%20T-Shirt">Interesse? Schreib uns →</a>
-        </div>
-      </div>
-      <div class="shop-card">
-        <img src="/assets/shop/shorts-mockup.png" alt="Mockup: For-Those-Who-Can't-Laufshorts mit Hebräer 12,1 am Seitensaum" loading="lazy">
-        <h3>„For Those Who Can't" Laufshorts</h3>
-        <p>Kleiner Schriftzug am Bein, Hebräer 12,1 am rechten Seitensaum.</p>
-        <div class="shop-meta">
-          <span class="shop-badge">Demnächst erhältlich</span>
-          <a class="btn btn-ghost" href="mailto:info@forthosewhocant-run.de?subject=Interesse%20an%20den%20Laufshorts">Interesse? Schreib uns →</a>
-        </div>
-      </div>
-    </div>
-    <p class="shop-note">
-      Design-Vorschau — noch keine echte Bestellung möglich. Größen, Preise und der
-      Bestellweg stehen bald fest.
-    </p>
-  </div>
-</section>
-
 <!-- ============ ANMELDUNG ============ -->
 <section class="register" id="anmeldung">
   <div class="wrap">
@@ -1766,7 +1672,6 @@
         <div class="footer-col">
           <h5>Teilnehmen</h5>
           <a href="#anmeldung">Anmeldung</a>
-          <a href="#shop">Shop</a>
           <a href="#faq">FAQ</a>
         </div>
         <div class="footer-col">
@@ -2541,7 +2446,7 @@
       '.section-head', '.why-quote', '.why-copy', '.impact-item', '.format-card',
       '.dedication-verse', '.dedication-copy', '.dedication-bib', '.course-map',
       '.course-facts .fact', '.tracker-panel', '.verse-inner', '.faq-item',
-      '.shop-card', '.footer-brand', '.footer-col'
+      '.footer-brand', '.footer-col'
     ].join(', ');
     const els = Array.from(document.querySelectorAll(sel));
     els.forEach(el => el.classList.add('reveal'));
