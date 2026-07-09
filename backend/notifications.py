@@ -40,6 +40,10 @@ def _ticket_url(runner) -> str:
     return f"{config.PUBLIC_BASE_URL}/api/ticket/{runner.id}"
 
 
+def _sponsor_url(runner) -> str:
+    return f"{config.PUBLIC_BASE_URL}/sponsor.html?runner={runner.id}"
+
+
 def _qr_url(runner) -> str:
     return f"{config.PUBLIC_BASE_URL}/api/qr/{runner.id}.png"
 
@@ -59,6 +63,8 @@ def build_confirmation_email(runner) -> tuple[str, str, str]:
     bib = escape(str(runner.bib_number or "—"))
     ticket_url = _ticket_url(runner)
     qr_url = _qr_url(runner)
+    sponsor_url = _sponsor_url(runner)
+    sponsor_button = _button(sponsor_url, "💛 Sponsor-Link öffnen & teilen")
     event = escape(config.EVENT_NAME)
 
     subject = f"Deine Anmeldung für {config.EVENT_NAME} · Startnummer {bib}"
@@ -107,6 +113,17 @@ def build_confirmation_email(runner) -> tuple[str, str, str]:
      Oder nutze einfach diese E-Mail als Bestätigung — der QR-Code oben genügt.
      Auf dem iPhone kannst du die Ticket-Seite über „Teilen → PDF sichern" ablegen.</p>
 
+  <div style="background:#1a1730;border-radius:12px;padding:24px;margin-top:20px;">
+    <p style="margin:0 0 8px;font-weight:600;">💛 Sammle Sponsor:innen</p>
+    <p style="color:#9a94a8;font-size:0.88rem;margin:0 0 14px;">
+       Teile deinen persönlichen Link mit Familie, Freunden und Firmen — sie sagen
+       dort mit zwei Klicks einen Betrag pro gelaufener Runde zu. Jede Runde, die
+       du läufst, wird so zur Spende.</p>
+    {sponsor_button}
+    <p style="color:#9a94a8;font-size:0.78rem;margin:12px 0 0;word-break:break-all;">
+       {sponsor_url}</p>
+  </div>
+
   <p style="color:#9a94a8;font-size:0.8rem;margin:24px 0 0;">
      Bis bald auf der Strecke! 🏃</p>
 </div>"""
@@ -119,6 +136,10 @@ Startnummer: {bib}
 
 Dein Startticket:
 {text_links_str}
+
+Sammle Sponsor:innen -- teile deinen persönlichen Link mit Familie, Freunden
+und Firmen (sie sagen dort einen Betrag pro gelaufener Runde zu):
+{sponsor_url}
 
 Der QR-Code auf der Ticket-Seite gilt als Check-in. Du kannst diese E-Mail auch
 einfach als Bestätigung nutzen. Bis bald!

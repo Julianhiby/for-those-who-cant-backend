@@ -149,6 +149,24 @@ def register(payload: RegisterIn, background_tasks: BackgroundTasks):
 # den der/die Läufer:in nach der Anmeldung per E-Mail bekommt)
 # --------------------------------------------------------------------------
 
+@app.get("/api/runners/{runner_id}")
+def get_runner(runner_id: str):
+    """Öffentliche Basis-Infos für die Sponsor-Seite (/sponsor.html?runner=...).
+    Bewusst OHNE E-Mail-Adresse -- der Link wird frei geteilt, und die
+    Kontaktdaten der Läufer:innen gehen Sponsor:innen nichts an."""
+    with Session(engine) as session:
+        runner = session.get(Runner, runner_id)
+        if not runner:
+            raise HTTPException(404, "Läufer:in nicht gefunden")
+        return {
+            "id": runner.id,
+            "name": runner.name,
+            "bib_number": runner.bib_number,
+            "type": runner.type,
+            "team_name": runner.team_name,
+        }
+
+
 @app.post("/api/runners/{runner_id}/sponsors")
 def add_sponsor(runner_id: str, payload: SponsorIn):
     with Session(engine) as session:
