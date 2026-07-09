@@ -605,6 +605,73 @@
     color: var(--paper);
   }
 
+  /* ---------- PACKLISTE ---------- */
+  .packlist-toggle{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    margin-top: 28px;
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 14px 18px;
+    width: 100%;
+    text-align:left;
+    transition: border-color 0.2s;
+  }
+  .packlist-toggle:hover{ border-color: var(--hivis-dim); }
+  .packlist-icon{
+    width: 26px;
+    height: 26px;
+    stroke: var(--hivis);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .packlist-toggle .label{
+    flex:1;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--paper);
+  }
+  .packlist-toggle .plus{
+    color: var(--hivis);
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .packlist-toggle.open .plus{ transform: rotate(45deg); }
+  .packlist-panel{
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .packlist-inner{ padding: 20px 4px 4px; }
+  .packlist-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 24px;
+    list-style:none;
+  }
+  .packlist-grid li{
+    position:relative;
+    padding-left: 20px;
+    color: var(--paper-dim);
+    font-size: 0.92rem;
+    line-height:1.5;
+  }
+  .packlist-grid li::before{
+    content:"";
+    position:absolute;
+    left:0; top:8px;
+    width:7px; height:7px;
+    border-radius:50%;
+    background: var(--hivis);
+  }
+
   /* ---------- LIVE TRACKER ---------- */
   .tracker{ }
   .tracker-panel{
@@ -1169,6 +1236,8 @@
     .section-head{ margin-bottom: 40px; }
     .section-head h2{ font-size: clamp(1.7rem, 8vw, 2.2rem); }
     .verse-banner{ padding: 40px 0; }
+    .packlist-grid{ grid-template-columns: 1fr; }
+    .packlist-toggle .label{ font-size: 0.8rem; }
 
     /* Hero-Stats: nicht mehr aus dem Bild laufen */
     .hero-stats{ gap: 20px 28px; flex-wrap: wrap; }
@@ -1472,6 +1541,33 @@
         <div class="fact"><span>Stirnlampe</span><strong>Pflicht — bitte mitbringen</strong></div>
         <div class="fact"><span>Verpflegung</span><strong>Am Start/Ziel, jede Runde</strong></div>
         <div class="fact"><span>Medizin. Dienst</span><strong>Durchgehend vor Ort</strong></div>
+      </div>
+
+      <button type="button" class="packlist-toggle" id="packlist-toggle" aria-expanded="false">
+        <svg class="packlist-icon" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M4,24 Q4,20 8,19 L13,14 Q16,11 20,12 L26,15 Q29,16 29,20 L29,24 Q29,26 27,26 L6,26 Q4,26 4,24 Z"/>
+          <path d="M13,14 L13,20 M17,13 L17,20 M21,14 L21,20"/>
+        </svg>
+        <span class="label">Packliste: Was du mitbringen solltest</span>
+        <span class="plus">+</span>
+      </button>
+      <div class="packlist-panel" id="packlist-panel">
+        <div class="packlist-inner">
+          <ul class="packlist-grid">
+            <li>Eingelaufene Laufschuhe (am besten ein Wechselpaar für die Nacht)</li>
+            <li>Stirnlampe + Ersatzbatterien (Pflicht für die Nachtstunden)</li>
+            <li>Wechselkleidung — es kühlt in der Nacht spürbar ab</li>
+            <li>Regen- oder Windjacke</li>
+            <li>Sonnencreme &amp; Kopfbedeckung für den Tag</li>
+            <li>Blasenpflaster &amp; Vaseline gegen Scheuerstellen</li>
+            <li>Eigene Gels/Riegel als Ergänzung zur Streckenverpflegung</li>
+            <li>Trinkflasche oder Trinkgurt</li>
+            <li>Ersatzsocken</li>
+            <li>Handy + Powerbank</li>
+            <li>Für Teams: Campingstuhl oder Decke für die Wechselzone</li>
+            <li>Pflaster für die Grundversorgung</li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -1788,6 +1884,16 @@
         a.style.maxHeight = a.scrollHeight + 'px';
       }
     });
+  });
+
+  /* ---------------- Packliste (Ausrüstung) auf-/zuklappen ---------------- */
+  const packlistToggle = document.getElementById('packlist-toggle');
+  const packlistPanel = document.getElementById('packlist-panel');
+  packlistToggle?.addEventListener('click', () => {
+    const isOpen = packlistToggle.classList.contains('open');
+    packlistToggle.classList.toggle('open', !isOpen);
+    packlistToggle.setAttribute('aria-expanded', String(!isOpen));
+    packlistPanel.style.maxHeight = isOpen ? null : packlistPanel.scrollHeight + 'px';
   });
 
   /* ---------------- Registration form: Solo/Team toggle ---------------- */
@@ -2445,7 +2551,7 @@
     const sel = [
       '.section-head', '.why-quote', '.why-copy', '.impact-item', '.format-card',
       '.dedication-verse', '.dedication-copy', '.dedication-bib', '.course-map',
-      '.course-facts .fact', '.tracker-panel', '.verse-inner', '.faq-item',
+      '.course-facts .fact', '.packlist-toggle', '.tracker-panel', '.verse-inner', '.faq-item',
       '.footer-brand', '.footer-col'
     ].join(', ');
     const els = Array.from(document.querySelectorAll(sel));
