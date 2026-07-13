@@ -1,0 +1,32 @@
+# Haelt den Render-Gratis-Dienst wach, damit Besucher nicht in den
+# 30-50-Sekunden-Kaltstart laufen (Render legt den Dienst nach ~15 Min
+# ohne Zugriff schlafen).
+#
+# Kosten-Rechnung: Render Free bietet 750 Instanzstunden/Monat; ein Dienst
+# durchgehend wach = max. 744 h (31 Tage) -- passt also. GitHub Actions ist
+# fuer oeffentliche Repos kostenlos.
+#
+# Hinweise:
+# - GitHub fuehrt Cron-Jobs nicht sekundengenau aus (Verzoegerungen von
+#   Minuten sind normal) -- fuer diesen Zweck egal.
+# - GitHub pausiert geplante Workflows nach 60 Tagen ohne Repo-Aktivitaet;
+#   dann unter Actions einmal manuell reaktivieren.
+# - Bei Umzug auf eine eigene Domain unten die URL anpassen.
+
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # alle 10 Minuten
+  workflow_dispatch: {}       # manueller Testlauf ueber den Actions-Tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health-Endpoint anpingen
+        # Grosszuegiges --max-time: wenn der Dienst doch eingeschlafen ist,
+        # weckt genau dieser Aufruf ihn auf (Kaltstart dauert 30-50 s).
+        run: |
+          curl -fsS --max-time 90 --retry 2 --retry-delay 5 \
+            https://for-those-who-cant-backend.onrender.com/api/health
