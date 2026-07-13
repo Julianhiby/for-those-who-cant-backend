@@ -16,7 +16,9 @@ Siehe README.md für Deployment-Hinweise (Render/Railway) und wie du die
 Wallet-Zertifikate einträgst.
 """
 
+import csv
 from contextlib import asynccontextmanager
+from io import StringIO
 from pathlib import Path
 from typing import Optional
 
@@ -328,19 +330,97 @@ def wallet_google(runner_id: str):
 
 
 # --------------------------------------------------------------------------
-# Admin: Datenbank zurücksetzen (passwortgeschützt)
+# Admin: Teilnehmerliste + Datenbank zurücksetzen (passwortgeschützt)
 # --------------------------------------------------------------------------
+
+def _require_admin(x_admin_token: str) -> None:
+    """Wirft 403/401, wenn kein bzw. ein falsches Admin-Passwort vorliegt."""
+    from config import ADMIN_TOKEN
+    if not ADMIN_TOKEN:
+        raise HTTPException(403, "Admin-Funktionen sind nicht konfiguriert (ADMIN_TOKEN fehlt).")
+    if not secrets.compare_digest(x_admin_token or "", ADMIN_TOKEN):
+        raise HTTPException(401, "Falsches Admin-Passwort.")
+
+
+def _collect_participants(session: Session) -> list[dict]:
+    """Alle Anmeldungen mit Sponsoren-Zusammenfassung und Rundenzahl --
+    gemeinsame Datenbasis für die JSON- und die CSV-Ausgabe."""
+    runners = session.exec(select(Runner).order_by(Runner.bib_number)).all()
+    result = []
+    for runner in runners:
+        sponsors = session.exec(
+            select(Sponsor).where(Sponsor.runner_id == runner.id)
+        ).all()
+        lap_count = len(session.exec(
+            select(LapEvent).where(LapEvent.runner_id == runner.id)
+        ).all())
+        result.append({
+            "bib_number": runner.bib_number,
+            "name": runner.name,
+            "email": runner.email,
+            "type": runner.type,
+            "team_name": runner.team_name,
+            "team_size": runner.team_size,
+            "lap_goal": runner.lap_goal,
+            "created_at": runner.created_at.isoformat(timespec="seconds"),
+            "laps": lap_count,
+            "sponsor_count": len(sponsors),
+            "per_lap_total": round(sum(s.amount_per_lap for s in sponsors), 2),
+            "sponsor_names": [s.sponsor_name for s in sponsors],
+        })
+    return result
+
+
+@app.get("/api/admin/participants")
+def admin_participants(x_admin_token: str = Header(default="")):
+    """Teilnehmerliste (inkl. E-Mails/Sponsoren) -- nur mit Admin-Passwort."""
+    _require_admin(x_admin_token)
+    with Session(engine) as session:
+        participants = _collect_participants(session)
+    return {"count": len(participants), "participants": participants}
+
+
+@app.get("/api/admin/participants.csv")
+def admin_participants_csv(x_admin_token: str = Header(default="")):
+    """Teilnehmerliste als CSV-Download, tauglich für deutsches Excel
+    (Semikolon-Trennzeichen + UTF-8-BOM, sonst kaputte Umlaute)."""
+    _require_admin(x_admin_token)
+    with Session(engine) as session:
+        participants = _collect_participants(session)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
+    writer.writerow([
+        "Startnummer", "Name", "E-Mail", "Typ", "Teamname", "Teamgröße",
+        "Rundenziel", "Angemeldet am", "Runden bisher", "Anzahl Sponsoren",
+        "€ pro Runde gesamt", "Sponsoren",
+    ])
+    for p in participants:
+        writer.writerow([
+            p["bib_number"], p["name"], p["email"],
+            "Team" if p["type"] == "team" else "Solo",
+            p["team_name"] or "", p["team_size"] or "", p["lap_goal"] or "",
+            p["created_at"], p["laps"], p["sponsor_count"],
+            # Deutsches Excel erwartet Komma als Dezimaltrennzeichen.
+            str(p["per_lap_total"]).replace(".", ","),
+            ", ".join(p["sponsor_names"]),
+        ])
+
+    # UTF-8-BOM voranstellen, damit Excel die Umlaute korrekt erkennt.
+    csv_bytes = b"\xef\xbb\xbf" + buffer.getvalue().encode("utf-8")
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="teilnehmer.csv"'},
+    )
+
 
 @app.post("/api/admin/reset")
 def admin_reset(x_admin_token: str = Header(default="")):
     """Löscht ALLE Anmeldungen, Sponsoren und Runden. Nur mit korrektem
     Admin-Passwort (ADMIN_TOKEN). Ist kein Passwort gesetzt, ist die Funktion
     komplett deaktiviert."""
-    from config import ADMIN_TOKEN
-    if not ADMIN_TOKEN:
-        raise HTTPException(403, "Zurücksetzen ist nicht konfiguriert (ADMIN_TOKEN fehlt).")
-    if not secrets.compare_digest(x_admin_token or "", ADMIN_TOKEN):
-        raise HTTPException(401, "Falsches Admin-Passwort.")
+    _require_admin(x_admin_token)
 
     with Session(engine) as session:
         laps = session.exec(select(LapEvent)).all()
@@ -367,48 +447,111 @@ _ADMIN_HTML = """<!doctype html>
 <title>Admin · For Those Who Can't</title>
 <style>
   body{font-family:-apple-system,Segoe UI,Inter,sans-serif;background:#100E1A;color:#EDE8DD;
-       display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;}
+       margin:0;padding:32px 24px;display:flex;justify-content:center;}
+  .wrap{max-width:900px;width:100%;}
   .card{background:#1a1730;border:1px solid rgba(237,232,221,.14);border-radius:18px;
-        padding:32px;max-width:420px;width:100%;}
-  h1{font-size:1.2rem;margin:0 0 6px;}
-  p{color:#9a94a8;font-size:.9rem;margin:0 0 20px;}
+        padding:28px;margin-bottom:24px;}
+  h1{font-size:1.35rem;margin:0 0 24px;}
+  h2{font-size:1.05rem;margin:0 0 6px;}
+  p{color:#9a94a8;font-size:.9rem;margin:0 0 18px;}
   label{display:block;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
         color:#9a94a8;margin-bottom:6px;}
   input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(237,232,221,.2);
         background:#100E1A;color:#EDE8DD;font-size:1rem;box-sizing:border-box;margin-bottom:16px;}
-  button{width:100%;padding:13px;border:0;border-radius:999px;font-weight:700;font-size:.95rem;
-         cursor:pointer;background:#c0392b;color:#fff;}
+  button{padding:12px 22px;border:0;border-radius:999px;font-weight:700;font-size:.9rem;
+         cursor:pointer;background:#E7B23E;color:#100E1A;margin-right:10px;margin-bottom:6px;}
+  button.danger{background:#c0392b;color:#fff;}
   button:disabled{opacity:.5;cursor:default;}
-  .msg{margin-top:16px;font-size:.9rem;line-height:1.5;display:none;}
+  .msg{margin-top:14px;font-size:.9rem;line-height:1.5;display:none;}
   .msg.show{display:block;}
   .ok{color:#4ade80;} .err{color:#f87171;}
+  .tablebox{overflow-x:auto;margin-top:18px;}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;white-space:nowrap;}
+  th,td{padding:8px 12px;text-align:left;border-bottom:1px solid rgba(237,232,221,.12);}
+  th{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:#9a94a8;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;}
 </style></head><body>
+<div class="wrap">
+  <h1>Admin · For Those Who Can't</h1>
+
   <div class="card">
-    <h1>Datenbank zurücksetzen</h1>
-    <p>Löscht <strong>alle</strong> Anmeldungen, Sponsoren und Runden — unwiderruflich.
-       Nur für den Übergang von Test zu echtem Betrieb gedacht.</p>
     <label for="token">Admin-Passwort</label>
     <input type="password" id="token" placeholder="ADMIN_TOKEN" autocomplete="off">
-    <button id="btn">Alle Anmeldungen löschen</button>
-    <div class="msg" id="msg"></div>
   </div>
+
+  <div class="card">
+    <h2>Teilnehmerliste</h2>
+    <p>Alle Anmeldungen mit E-Mail, Sponsoren-Zusagen und bisherigen Runden.
+       Der CSV-Export öffnet sich direkt in Excel (deutsche Einstellungen).</p>
+    <button id="load-btn">Teilnehmer laden</button>
+    <button id="csv-btn">CSV herunterladen</button>
+    <div class="msg" id="list-msg"></div>
+    <div class="tablebox" id="tablebox"></div>
+  </div>
+
+  <div class="card">
+    <h2>Datenbank zurücksetzen</h2>
+    <p>Löscht <strong>alle</strong> Anmeldungen, Sponsoren und Runden — unwiderruflich.
+       Nur für den Übergang von Test zu echtem Betrieb gedacht.</p>
+    <button id="reset-btn" class="danger">Alle Anmeldungen löschen</button>
+    <div class="msg" id="reset-msg"></div>
+  </div>
+</div>
 <script>
-  const btn=document.getElementById('btn'), msg=document.getElementById('msg');
-  btn.addEventListener('click', async ()=>{
-    const token=document.getElementById('token').value.trim();
-    if(!token){ show('Bitte Admin-Passwort eingeben.','err'); return; }
+  const token=()=>document.getElementById('token').value.trim();
+  function show(id,t,c){ const el=document.getElementById(id); el.textContent=t; el.className='msg show '+c; }
+  const esc=s=>String(s??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+  document.getElementById('load-btn').addEventListener('click', async ()=>{
+    if(!token()){ show('list-msg','Bitte oben das Admin-Passwort eingeben.','err'); return; }
+    show('list-msg','Lade …','ok');
+    try{
+      const res=await fetch('/api/admin/participants',{headers:{'X-Admin-Token':token()}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.detail||('Fehler '+res.status));
+      const rows=data.participants.map(p=>
+        '<tr><td class="num">'+esc(p.bib_number)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.email)+'</td>'+
+        '<td>'+(p.type==='team'?('Team'+(p.team_name?' · '+esc(p.team_name):'')):'Solo')+'</td>'+
+        '<td class="num">'+esc(p.laps)+'</td><td class="num">'+esc(p.sponsor_count)+'</td>'+
+        '<td class="num">'+esc(String(p.per_lap_total).replace('.',','))+' €</td>'+
+        '<td>'+esc(p.sponsor_names.join(', '))+'</td></tr>').join('');
+      document.getElementById('tablebox').innerHTML=
+        '<table><thead><tr><th>Nr.</th><th>Name</th><th>E-Mail</th><th>Typ</th><th>Runden</th>'+
+        '<th>Sponsoren</th><th>€/Runde</th><th>Sponsor-Namen</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      show('list-msg','✓ '+data.count+' Anmeldung(en) geladen.','ok');
+    }catch(e){ show('list-msg','Fehlgeschlagen: '+e.message,'err'); }
+  });
+
+  document.getElementById('csv-btn').addEventListener('click', async ()=>{
+    if(!token()){ show('list-msg','Bitte oben das Admin-Passwort eingeben.','err'); return; }
+    try{
+      // Per fetch + Blob, damit das Passwort im Header bleibt (nicht in der URL/Logs).
+      const res=await fetch('/api/admin/participants.csv',{headers:{'X-Admin-Token':token()}});
+      if(!res.ok){ const d=await res.json().catch(()=>({})); throw new Error(d.detail||('Fehler '+res.status)); }
+      const blob=await res.blob();
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='teilnehmer.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      show('list-msg','✓ CSV heruntergeladen.','ok');
+    }catch(e){ show('list-msg','Fehlgeschlagen: '+e.message,'err'); }
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', async ()=>{
+    const btn=document.getElementById('reset-btn');
+    if(!token()){ show('reset-msg','Bitte oben das Admin-Passwort eingeben.','err'); return; }
     if(!confirm('Wirklich ALLE Anmeldungen unwiderruflich löschen?')) return;
     btn.disabled=true; btn.textContent='Wird gelöscht …';
     try{
-      const res=await fetch('/api/admin/reset',{method:'POST',headers:{'X-Admin-Token':token}});
+      const res=await fetch('/api/admin/reset',{method:'POST',headers:{'X-Admin-Token':token()}});
       const data=await res.json();
       if(!res.ok) throw new Error(data.detail||('Fehler '+res.status));
       const d=data.deleted;
-      show('✓ Zurückgesetzt: '+d.runners+' Anmeldungen, '+d.sponsors+' Sponsoren, '+d.laps+' Runden gelöscht.','ok');
-    }catch(e){ show('Fehlgeschlagen: '+e.message,'err'); }
+      show('reset-msg','✓ Zurückgesetzt: '+d.runners+' Anmeldungen, '+d.sponsors+' Sponsoren, '+d.laps+' Runden gelöscht.','ok');
+    }catch(e){ show('reset-msg','Fehlgeschlagen: '+e.message,'err'); }
     btn.disabled=false; btn.textContent='Alle Anmeldungen löschen';
   });
-  function show(t,c){ msg.textContent=t; msg.className='msg show '+c; }
 </script>
 </body></html>"""
 
