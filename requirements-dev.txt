@@ -1,0 +1,6 @@
+# Zusätzliche Pakete nur für Tests/CI -- NICHT für den Produktionsbetrieb nötig.
+# Installieren mit:  pip install -r requirements-dev.txt
+-r requirements.txt
+
+pytest>=8.0
+httpx>=0.27        # von FastAPIs TestClient benötigt

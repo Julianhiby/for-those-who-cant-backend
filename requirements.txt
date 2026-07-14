@@ -21,3 +21,6 @@ qrcode[pil]>=7.4
 # Postgres-Treiber (für dauerhafte Datenbank, z. B. Neon). SQLite braucht ihn
 # nicht, aber installiert schadet er nicht.
 psycopg2-binary>=2.9
+
+# Fehler-Monitoring (nur aktiv, wenn SENTRY_DSN gesetzt ist -- siehe config.py).
+sentry-sdk[fastapi]>=2.0

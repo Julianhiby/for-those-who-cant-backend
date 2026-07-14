@@ -43,6 +43,12 @@ LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "1.0"))
 # Spendenziel in Euro, für die Fortschrittsleiste auf der Website.
 DONATION_GOAL = float(os.getenv("DONATION_GOAL", "25000"))
 
+# Fehler-Monitoring über Sentry (optional). Ist SENTRY_DSN leer, ist das
+# Monitoring komplett deaktiviert -- der Code läuft dann ohne Sentry weiter.
+# DSN kostenlos auf sentry.io anlegen und hier bzw. bei Render eintragen.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "production")
+
 # Admin-Passwort für die Zurücksetzen-Funktion (/api/admin). Ist es leer, ist
 # das Zurücksetzen komplett deaktiviert -- so kann niemand versehentlich oder
 # böswillig die Daten löschen.

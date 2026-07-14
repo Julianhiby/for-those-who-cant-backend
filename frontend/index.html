@@ -84,6 +84,24 @@
     outline-offset: 3px;
   }
 
+  /* Skip-Link: unsichtbar, bis er per Tastatur fokussiert wird -- lässt
+     Screenreader-/Tastatur-Nutzer:innen die Navigation überspringen. */
+  .skip-link{
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 200;
+    background: var(--hivis);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: 6px;
+    transition: top 0.2s;
+  }
+  .skip-link:focus{ top: 12px; }
+
   /* ---------- HINTERGRUND-GRAVUR ---------- */
   .bg-watermark{
     position: fixed;
@@ -1331,6 +1349,8 @@
   </div>
 </div>
 
+<a class="skip-link" href="#hauptinhalt">Zum Inhalt springen</a>
+
 <header class="site-nav">
   <div class="nav-inner">
     <div class="brand">
@@ -1340,7 +1360,7 @@
       </svg>
       FOR THOSE WHO CAN'T
     </div>
-    <nav class="links">
+    <nav class="links" id="hauptnavigation" aria-label="Hauptnavigation">
       <a href="#warum">Warum</a>
       <a href="#format">Format</a>
       <a href="#widmung">Für wen</a>
@@ -1349,9 +1369,11 @@
       <a href="#faq">FAQ</a>
     </nav>
     <a href="#anmeldung" class="nav-cta">Anmelden</a>
-    <button class="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <button class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="hauptnavigation">☰</button>
   </div>
 </header>
+
+<main id="hauptinhalt">
 
 <!-- ============ HERO ============ -->
 <section class="hero">
@@ -1548,7 +1570,7 @@
           <path d="M13,14 L13,20 M17,13 L17,20 M21,14 L21,20"/>
         </svg>
         <span class="label">Packliste: Was du mitbringen solltest</span>
-        <span class="plus">+</span>
+        <span class="plus" aria-hidden="true">+</span>
       </button>
       <div class="packlist-panel" id="packlist-panel">
         <div class="packlist-inner">
@@ -1712,7 +1734,7 @@
 
       <div class="field full">
         <button type="submit" class="reg-submit">Startplatz sichern →</button>
-        <div class="reg-success" id="reg-success"></div>
+        <div class="reg-success" id="reg-success" role="status" aria-live="polite"></div>
       </div>
     </form>
   </div>
@@ -1727,32 +1749,34 @@
     </div>
     <div class="faq-list">
       <div class="faq-item">
-        <button class="faq-q"><span>Muss ich die vollen 24 Stunden laufen?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Muss ich die vollen 24 Stunden laufen?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Nein. Du läufst so viele Runden, wie du schaffst — Pausen, Schlaf und Wechsel sind jederzeit möglich. Es zählt jede gelaufene Runde, nicht ein Zieleinlauf.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q"><span>Wie funktioniert das GPS-Tracking genau?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Wie funktioniert das GPS-Tracking genau?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Beim Start erhältst du ein GPS-Gerät, das deine Position während des gesamten Rennens überträgt. Deine Runden, Distanz und Position erscheinen live im Tracker auf dieser Seite.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q"><span>Muss ich eine eigene Stirnlampe mitbringen?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Muss ich eine eigene Stirnlampe mitbringen?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Ja. Die Strecke ist nicht beleuchtet, daher ist eine eigene Stirnlampe inklusive Ersatzbatterien für die Nachtstunden Pflicht. Ohne funktionierende Lampe ist ein Start auf der Strecke nach Einbruch der Dunkelheit nicht möglich.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q"><span>Was hat es mit dem Namen auf der Startnummer auf sich?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Was hat es mit dem Namen auf der Startnummer auf sich?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Jede:r Läufer:in bekommt bei der Anmeldung eine reale Person zugeteilt, die selbst nicht laufen kann. Ihr Name steht während des ganzen Rennens sichtbar auf deiner Startnummer — du läufst dann jede Runde ganz konkret für sie.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q"><span>Wohin gehen die Spenden genau?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Wohin gehen die Spenden genau?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">100 % der Startgebühren und zusätzlichen Spenden gehen ungekürzt an den guten Zweck. Die Partner-Organisation geben wir in Kürze bekannt — nach dem Event veröffentlichen wir eine transparente Abrechnung.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q"><span>Kann ich auch ohne zu laufen einfach spenden?</span><span class="plus">+</span></button>
+        <button class="faq-q" aria-expanded="false"><span>Kann ich auch ohne zu laufen einfach spenden?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Ja! Am einfachsten unterstützt du eine:n Läufer:in als Sponsor:in mit einem Betrag pro gelaufener Runde — entweder direkt bei der Anmeldung oder über den persönlichen Sponsor-Link, den jede:r Läufer:in nach der Anmeldung bekommt. Auch reine Unterstützer:innen sind herzlich willkommen: Schreib uns einfach eine E-Mail (Kontakt unten im Footer).</div></div>
       </div>
     </div>
   </div>
 </section>
+
+</main>
 
 <!-- ============ FOOTER ============ -->
 <footer>
@@ -1859,10 +1883,16 @@
     links.style.background = 'rgba(18,21,28,0.98)';
     links.style.backdropFilter = 'blur(10px)';
     links.style.padding = '20px 24px';
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.setAttribute('aria-label', 'Menü schließen');
   }
   // Alle Inline-Styles entfernen -> es greift wieder das CSS: mobil per Media
   // Query versteckt, am Desktop sichtbar. So bleibt nie ein Zustand hängen.
-  function closeMenu(){ links.removeAttribute('style'); }
+  function closeMenu(){
+    links.removeAttribute('style');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Menü öffnen');
+  }
 
   toggle?.addEventListener('click', () => {
     if (links.style.display === 'flex') closeMenu(); else openMenu();
@@ -1884,10 +1914,12 @@
       document.querySelectorAll('.faq-item.open').forEach(o => {
         o.classList.remove('open');
         o.querySelector('.faq-a').style.maxHeight = null;
+        o.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
       });
       if (!isOpen){
         item.classList.add('open');
         a.style.maxHeight = a.scrollHeight + 'px';
+        q.setAttribute('aria-expanded', 'true');
       }
     });
   });

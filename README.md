@@ -80,6 +80,20 @@ Postgres-Datenbank; Anmeldungen/Startnummern bleiben über Neustarts erhalten
 > nicht greift: Container kurz neu starten (`docker compose restart web`) oder
 > für schnelles Iterieren einfach den lokalen `uvicorn`-Weg (ohne Docker) nutzen.
 
+## Automatisierte Tests
+
+Die API ist mit einer pytest-Suite abgesichert (temporäre SQLite-DB, kein
+Netzwerk). Lokal ausführen:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Dieselben Tests laufen automatisch bei jedem Push/Pull-Request über GitHub
+Actions (`.github/workflows/tests.yml`) — schlägt ein Test fehl, siehst du das
+direkt im Pull Request.
+
 ## Test-Lauf (Probelauf ohne echtes GPS)
 
 So testest du den kompletten Ablauf lokal:
@@ -136,6 +150,21 @@ Siehe [`.env.example`](.env.example) für die vollständige Liste.
 
 > ⚠️ Zertifikate, Schlüssel und die `.env` gehören **niemals** ins Git-Repo —
 > die `.gitignore` schließt sie bereits aus.
+
+## Fehler-Monitoring
+
+Zwei Ebenen, beide kostenlos:
+
+- **Verfügbarkeit (ist die Seite oben?):** Der Keep-alive-Workflow
+  (`.github/workflows/keepalive.yml`) pingt regelmäßig `/api/health`. Schlägt der
+  Ping fehl (Seite down), **schickt GitHub dir automatisch eine E-Mail** über den
+  fehlgeschlagenen Actions-Lauf — ohne weitere Einrichtung.
+- **Server-Fehler (Ausnahmen im Code):** optional über **Sentry**. Kostenlosen
+  DSN auf [sentry.io](https://sentry.io) anlegen und als `SENTRY_DSN` bei Render
+  eintragen. Dann werden unbehandelte Fehler automatisch mit Stacktrace erfasst
+  und du wirst benachrichtigt; zusätzlich meldet die App aktiv, wenn eine
+  Bestätigungsmail nicht verschickt werden konnte. Ohne `SENTRY_DSN` ist das
+  Monitoring komplett inaktiv (der Code läuft unverändert weiter).
 
 ## Deployment auf Render (kostenlose öffentliche Test-URL)
 

@@ -39,8 +39,13 @@ from config import (
 )
 from models import Runner, Sponsor, LapEvent
 from wallet import apple_wallet, google_wallet
+import monitoring
 import notifications
 import ticket
+
+# Fehler-Monitoring so früh wie möglich starten (no-op ohne SENTRY_DSN), damit
+# auch Fehler beim App-Aufbau erfasst werden.
+monitoring.init()
 
 # connect_args={"check_same_thread": False} ist SQLite-spezifisch -- bei Postgres
 # würde dieses Argument einen Fehler werfen. Deshalb nur für SQLite setzen.
