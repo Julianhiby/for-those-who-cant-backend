@@ -14,6 +14,22 @@ def _register(client, **overrides):
     return res.json()
 
 
+def _confirm_all_sponsors(client, runner_id):
+    """Bestätigt alle Sponsor:innen eines Runners über den Double-Opt-in-Link
+    (Token direkt aus der Test-DB gelesen -- die API gibt ihn nicht heraus)."""
+    from sqlmodel import Session, select
+    import app as app_module
+    from models import Sponsor
+
+    with Session(app_module.engine) as s:
+        toks = [(sp.id, sp.confirm_token)
+                for sp in s.exec(select(Sponsor).where(Sponsor.runner_id == runner_id)).all()]
+    for sid, tok in toks:
+        res = client.get(f"/api/sponsors/{sid}/confirm", params={"token": tok})
+        assert res.status_code == 200, res.text
+    return toks
+
+
 # --------------------------------------------------------------------------
 # Anmeldung
 # --------------------------------------------------------------------------
@@ -42,7 +58,8 @@ def test_bib_number_increments(client):
 def test_register_team_with_sponsors(client):
     data = _register(
         client, type="team", team_name="Blitz", team_size=4,
-        sponsors=[{"sponsor_name": "Oma", "amount_per_lap": 2.5}],
+        sponsors=[{"sponsor_name": "Oma", "sponsor_email": "oma@example.com",
+                   "amount_per_lap": 2.5}],
     )
     runner = client.get(f"/api/runners/{data['id']}").json()
     assert runner["type"] == "team"
@@ -51,6 +68,14 @@ def test_register_team_with_sponsors(client):
 
 def test_register_rejects_invalid_email(client):
     res = client.post("/api/register", json={**REG_SOLO, "email": "keine-mail"})
+    assert res.status_code == 422
+
+
+def test_register_rejects_sponsor_without_email(client):
+    # Sponsor-E-Mail ist Pflicht (an sie geht die Bestätigungsmail).
+    res = client.post("/api/register", json={
+        **REG_SOLO, "sponsors": [{"sponsor_name": "Ohne Mail", "amount_per_lap": 1.0}],
+    })
     assert res.status_code == 422
 
 
@@ -73,35 +98,88 @@ def test_get_runner_unknown_404(client):
 # Sponsoren + Runden + Spendenstand
 # --------------------------------------------------------------------------
 
-def test_funds_are_sponsors_times_laps(client):
+def test_unconfirmed_sponsors_count_as_pending_not_raised(client):
     # 2 €/Runde bei der Anmeldung, 3,50 € nachträglich = 5,50 € pro Runde.
-    data = _register(client, sponsors=[{"sponsor_name": "A", "amount_per_lap": 2.0}])
+    data = _register(client, sponsors=[
+        {"sponsor_name": "A", "sponsor_email": "a@example.com", "amount_per_lap": 2.0}])
     rid = data["id"]
     assert client.post(
         f"/api/runners/{rid}/sponsors",
-        json={"sponsor_name": "B", "amount_per_lap": 3.5},
+        json={"sponsor_name": "B", "sponsor_email": "b@example.com", "amount_per_lap": 3.5},
     ).status_code == 200
 
-    # Ohne Runden noch 0 €.
-    assert client.get("/api/live").json()["fundsRaised"] == 0
-
-    # Zwei Runden -> 2 * 5,50 = 11,00 €.
     for lap in (1, 2):
         assert client.post(
             "/api/webhook/lap", json={"runner_id": rid, "lap_number": lap}
         ).status_code == 200
 
+    # Solange niemand bestätigt hat: alles "offen", nichts "gesichert".
     live = client.get("/api/live").json()
     assert live["totalLaps"] == 2
-    assert live["fundsRaised"] == 11.0
+    assert live["fundsRaised"] == 0.0
+    assert live["fundsPending"] == 11.0     # 2 Runden * (2,0 + 3,5)
     assert live["totalRunners"] == 1
     assert live["donationGoal"] == 25000
+
+
+def test_confirmed_sponsors_count_as_raised(client):
+    data = _register(client, sponsors=[
+        {"sponsor_name": "A", "sponsor_email": "a@example.com", "amount_per_lap": 2.0}])
+    rid = data["id"]
+    client.post(f"/api/runners/{rid}/sponsors",
+                json={"sponsor_name": "B", "sponsor_email": "b@example.com", "amount_per_lap": 3.5})
+    for lap in (1, 2):
+        client.post("/api/webhook/lap", json={"runner_id": rid, "lap_number": lap})
+
+    _confirm_all_sponsors(client, rid)
+
+    live = client.get("/api/live").json()
+    assert live["fundsRaised"] == 11.0      # jetzt beide bestätigt -> gesichert
+    assert live["fundsPending"] == 0.0
+
+
+def test_confirm_with_wrong_token_keeps_sponsor_pending(client):
+    from sqlmodel import Session, select
+    import app as app_module
+    from models import Sponsor
+
+    data = _register(client, sponsors=[
+        {"sponsor_name": "A", "sponsor_email": "a@example.com", "amount_per_lap": 2.0}])
+    rid = data["id"]
+    client.post("/api/webhook/lap", json={"runner_id": rid, "lap_number": 1})
+
+    with Session(app_module.engine) as s:
+        sp = s.exec(select(Sponsor).where(Sponsor.runner_id == rid)).first()
+    res = client.get(f"/api/sponsors/{sp.id}/confirm", params={"token": "FALSCH"})
+    assert res.status_code == 400
+
+    live = client.get("/api/live").json()
+    assert live["fundsRaised"] == 0.0       # unverändert offen
+    assert live["fundsPending"] == 2.0
+
+
+def test_confirm_is_idempotent(client):
+    from sqlmodel import Session, select
+    import app as app_module
+    from models import Sponsor
+
+    data = _register(client, sponsors=[
+        {"sponsor_name": "A", "sponsor_email": "a@example.com", "amount_per_lap": 2.0}])
+    rid = data["id"]
+    with Session(app_module.engine) as s:
+        sp = s.exec(select(Sponsor).where(Sponsor.runner_id == rid)).first()
+        sid, tok = sp.id, sp.confirm_token
+    assert client.get(f"/api/sponsors/{sid}/confirm", params={"token": tok}).status_code == 200
+    # Zweiter Aufruf bleibt 200 ("schon bestätigt"), kein Fehler.
+    again = client.get(f"/api/sponsors/{sid}/confirm", params={"token": tok})
+    assert again.status_code == 200
+    assert "bereits bestätigt" in again.text
 
 
 def test_add_sponsor_unknown_runner_404(client):
     res = client.post(
         "/api/runners/gibtsnicht/sponsors",
-        json={"sponsor_name": "X", "amount_per_lap": 1},
+        json={"sponsor_name": "X", "sponsor_email": "x@example.com", "amount_per_lap": 1},
     )
     assert res.status_code == 404
 
@@ -125,10 +203,18 @@ def test_admin_requires_token(client, admin_headers):
 
 def test_admin_participants_content(client, admin_headers):
     data = _register(client, sponsors=[
-        {"sponsor_name": "Oma", "amount_per_lap": 2.0},
-        {"sponsor_name": "Firma", "amount_per_lap": 1.5},
+        {"sponsor_name": "Oma", "sponsor_email": "oma@example.com", "amount_per_lap": 2.0},
+        {"sponsor_name": "Firma", "sponsor_email": "firma@example.com", "amount_per_lap": 1.5},
     ])
     client.post("/api/webhook/lap", json={"runner_id": data["id"], "lap_number": 1})
+    # Nur "Oma" bestätigen -> Admin muss bestätigt/offen getrennt zeigen.
+    from sqlmodel import Session, select
+    import app as app_module
+    from models import Sponsor
+    with Session(app_module.engine) as s:
+        oma = s.exec(select(Sponsor).where(Sponsor.sponsor_name == "Oma")).first()
+        sid, tok = oma.id, oma.confirm_token
+    client.get(f"/api/sponsors/{sid}/confirm", params={"token": tok})
 
     body = client.get("/api/admin/participants", headers=admin_headers).json()
     assert body["count"] == 1
@@ -137,12 +223,17 @@ def test_admin_participants_content(client, admin_headers):
     assert p["laps"] == 1
     assert p["sponsor_count"] == 2
     assert p["per_lap_total"] == 3.5
+    assert p["confirmed_per_lap"] == 2.0
+    assert p["pending_per_lap"] == 1.5
+    assert p["sponsor_confirmed_count"] == 1
+    assert p["sponsor_pending_count"] == 1
     assert set(p["sponsor_names"]) == {"Oma", "Firma"}
 
 
 def test_admin_csv_is_excel_ready(client, admin_headers):
     _register(client, name="Jürgen Müßig",
-              sponsors=[{"sponsor_name": "Bäckerei", "amount_per_lap": 2.0}])
+              sponsors=[{"sponsor_name": "Bäckerei", "sponsor_email": "baeck@example.com",
+                         "amount_per_lap": 2.0}])
     res = client.get("/api/admin/participants.csv", headers=admin_headers)
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("text/csv")
@@ -154,7 +245,8 @@ def test_admin_csv_is_excel_ready(client, admin_headers):
 
 
 def test_admin_reset_deletes_everything(client, admin_headers):
-    _register(client, sponsors=[{"sponsor_name": "A", "amount_per_lap": 1}])
+    _register(client, sponsors=[
+        {"sponsor_name": "A", "sponsor_email": "a@example.com", "amount_per_lap": 1}])
     res = client.post("/api/admin/reset", headers=admin_headers)
     assert res.json()["ok"] is True
     assert client.get("/api/live").json()["totalRunners"] == 0
