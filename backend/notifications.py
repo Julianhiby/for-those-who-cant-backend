@@ -172,6 +172,13 @@ def send_confirmation(runner) -> None:
     except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
         last_email_result = f"FEHLER -> {runner.email}: {e}"
         print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
+        # Ans Monitoring melden -- eine fehlgeschlagene Bestätigungsmail bringt
+        # die App nicht zum Absturz, aber man will wissen, wenn Teilnehmer:innen
+        # ihre Mail nicht bekommen. (No-op ohne SENTRY_DSN.)
+        import monitoring
+        monitoring.capture_message(
+            f"Bestätigungsmail an {runner.email} fehlgeschlagen: {e}", level="error"
+        )
         _save_dev_email(runner.email, subject, html)
         return
 
