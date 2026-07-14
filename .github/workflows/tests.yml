@@ -1,0 +1,25 @@
+# Führt die API-Tests bei jedem Push auf main und bei jedem Pull Request aus.
+# So faellt sofort auf, wenn eine Aenderung etwas Bestehendes kaputt macht,
+# BEVOR sie gemergt/deployt wird. GitHub Actions ist fuer oeffentliche Repos
+# kostenlos.
+
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements-dev.txt
+      - name: Tests ausführen
+        run: pytest

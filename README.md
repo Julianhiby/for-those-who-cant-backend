@@ -80,6 +80,20 @@ Postgres-Datenbank; Anmeldungen/Startnummern bleiben über Neustarts erhalten
 > nicht greift: Container kurz neu starten (`docker compose restart web`) oder
 > für schnelles Iterieren einfach den lokalen `uvicorn`-Weg (ohne Docker) nutzen.
 
+## Automatisierte Tests
+
+Die API ist mit einer pytest-Suite abgesichert (temporäre SQLite-DB, kein
+Netzwerk). Lokal ausführen:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Dieselben Tests laufen automatisch bei jedem Push/Pull-Request über GitHub
+Actions (`.github/workflows/tests.yml`) — schlägt ein Test fehl, siehst du das
+direkt im Pull Request.
+
 ## Test-Lauf (Probelauf ohne echtes GPS)
 
 So testest du den kompletten Ablauf lokal:
