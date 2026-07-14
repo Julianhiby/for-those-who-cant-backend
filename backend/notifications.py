@@ -147,37 +147,102 @@ einfach als Bestätigung nutzen. Bis bald!
     return subject, html, text
 
 
-def send_confirmation(runner) -> None:
-    """
-    Verschickt die Bestätigungsmail über den ersten konfigurierten Weg
+def _dispatch(to: str, subject: str, html: str, text: str, *, label: str) -> None:
+    """Verschickt eine Mail über den ersten konfigurierten Weg
     (Resend -> SMTP -> Dev-Modus). Fehler werden abgefangen und protokolliert;
-    im Fehlerfall wird die Mail zusätzlich lokal abgelegt.
-    """
+    im Fehlerfall (oder wenn nichts konfiguriert ist) wird die Mail lokal
+    abgelegt. `label` beschreibt die Mail nur für das Log/last_email_result.
+    Gemeinsame Basis für Läufer- und Sponsor-Mails."""
     global last_email_result
-    subject, html, text = build_confirmation_email(runner)
-
     try:
         if config.RESEND_CONFIGURED:
-            _send_via_resend(runner.email, subject, html, text)
-            last_email_result = f"resend:ok -> {runner.email}"
-            print(f"[email] Resend: Bestätigung an {runner.email} verschickt "
-                  f"(Startnummer {runner.bib_number}).")
+            _send_via_resend(to, subject, html, text)
+            last_email_result = f"resend:ok ({label}) -> {to}"
+            print(f"[email] Resend: {label} an {to} verschickt.")
             return
         if config.EMAIL_CONFIGURED:
-            _send_via_smtp(runner.email, subject, html, text)
-            last_email_result = f"smtp:ok -> {runner.email}"
-            print(f"[email] SMTP: Bestätigung an {runner.email} verschickt "
-                  f"(Startnummer {runner.bib_number}).")
+            _send_via_smtp(to, subject, html, text)
+            last_email_result = f"smtp:ok ({label}) -> {to}"
+            print(f"[email] SMTP: {label} an {to} verschickt.")
             return
     except Exception as e:  # noqa: BLE001 -- Versand darf die Anmeldung nie umwerfen
-        last_email_result = f"FEHLER -> {runner.email}: {e}"
-        print(f"[email] WARNUNG: Versand an {runner.email} fehlgeschlagen: {e}")
-        _save_dev_email(runner.email, subject, html)
+        last_email_result = f"FEHLER ({label}) -> {to}: {e}"
+        print(f"[email] WARNUNG: Versand ({label}) an {to} fehlgeschlagen: {e}")
+        _save_dev_email(to, subject, html)
         return
 
     # Nichts konfiguriert -> Dev-Modus.
-    last_email_result = f"dev-modus (kein Versand konfiguriert) -> {runner.email}"
-    _save_dev_email(runner.email, subject, html)
+    last_email_result = f"dev-modus ({label}, kein Versand konfiguriert) -> {to}"
+    _save_dev_email(to, subject, html)
+
+
+def send_confirmation(runner) -> None:
+    """Anmeldebestätigung mit QR-Ticket an die Läufer:in."""
+    subject, html, text = build_confirmation_email(runner)
+    _dispatch(runner.email, subject, html, text,
+              label=f"Bestätigung Startnummer {runner.bib_number}")
+
+
+def build_sponsor_confirmation_email(
+    *, sponsor_name: str, amount_per_lap: float, runner_display_name: str,
+    confirm_url: str,
+) -> tuple[str, str, str]:
+    """Gibt (Betreff, HTML, Plain-Text) für die Double-Opt-in-Mail an eine:n
+    Sponsor:in zurück -- gleicher Event-Look wie die Läufer-Bestätigung."""
+    name = escape(sponsor_name)
+    runner = escape(runner_display_name)
+    betrag = f"{amount_per_lap:.2f}".replace(".", ",")
+    event = escape(config.EVENT_NAME)
+    confirm_button = _button(confirm_url, "✅ Zusage jetzt bestätigen")
+
+    subject = f"Bitte bestätige deine Sponsor-Zusage für {config.EVENT_NAME}"
+
+    html = f"""\
+<div style="font-family:-apple-system,Segoe UI,Inter,sans-serif;max-width:520px;
+     margin:0 auto;background:#100E1A;color:#EDE8DD;border-radius:16px;padding:32px;">
+  <h1 style="font-size:1.35rem;margin:0 0 12px;">Danke für deine Unterstützung, {name}! 💛</h1>
+  <p style="color:#9a94a8;margin:0 0 16px;">Du möchtest <strong style="color:#EDE8DD;">{runner}</strong>
+     beim Spendenlauf <strong style="color:#EDE8DD;">{event}</strong> mit
+     <strong style="color:#E7B23E;">{betrag} € pro gelaufener Runde</strong> unterstützen.</p>
+  <p style="margin:0 0 20px;">Damit deine Zusage in den Spendenstand zählt, bestätige
+     sie bitte einmal mit einem Klick:</p>
+  <div style="text-align:center;margin-bottom:20px;">{confirm_button}</div>
+  <p style="color:#9a94a8;font-size:0.8rem;margin:0 0 6px;">Falls der Button nicht geht,
+     kopiere diesen Link in deinen Browser:</p>
+  <p style="color:#9a94a8;font-size:0.78rem;margin:0 0 20px;word-break:break-all;">{escape(confirm_url)}</p>
+  <p style="color:#9a94a8;font-size:0.82rem;margin:0;">Deine Zusage ist eine
+     Absichtserklärung, keine sofortige Zahlung. Nach dem Lauf melden wir uns mit
+     der Rundenzahl und den Spendendetails. Wenn du diese Mail nicht erwartet hast,
+     ignoriere sie einfach — dann zählt nichts.</p>
+</div>"""
+
+    text = f"""\
+Danke für deine Unterstützung, {sponsor_name}!
+
+Du möchtest {runner_display_name} beim Spendenlauf {config.EVENT_NAME} mit
+{betrag} EUR pro gelaufener Runde unterstützen.
+
+Damit deine Zusage in den Spendenstand zählt, bestätige sie bitte über diesen Link:
+{confirm_url}
+
+Deine Zusage ist eine Absichtserklärung, keine sofortige Zahlung. Nach dem Lauf
+melden wir uns mit der Rundenzahl und den Spendendetails. Wenn du diese Mail nicht
+erwartet hast, ignoriere sie einfach -- dann zählt nichts.
+"""
+    return subject, html, text
+
+
+def send_sponsor_confirmation(
+    *, sponsor_email: str, sponsor_name: str, amount_per_lap: float,
+    runner_display_name: str, confirm_url: str,
+) -> None:
+    """Verschickt die Double-Opt-in-Mail an eine:n Sponsor:in (primitive Args,
+    damit dies gefahrlos als BackgroundTask nach Session-Ende läuft)."""
+    subject, html, text = build_sponsor_confirmation_email(
+        sponsor_name=sponsor_name, amount_per_lap=amount_per_lap,
+        runner_display_name=runner_display_name, confirm_url=confirm_url,
+    )
+    _dispatch(sponsor_email, subject, html, text, label="Sponsor-Bestätigung")
 
 
 def _send_via_resend(to: str, subject: str, html: str, text: str) -> None:

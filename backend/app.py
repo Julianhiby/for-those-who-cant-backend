@@ -18,20 +18,25 @@ Wallet-Zertifikate einträgst.
 
 import csv
 from contextlib import asynccontextmanager
+from datetime import datetime
+from html import escape
 from io import StringIO
 from pathlib import Path
 from typing import Optional
 
 import secrets
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Response
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import inspect as sa_inspect, text as sa_text
 from sqlmodel import SQLModel, Session, create_engine, select
 
-from config import DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM, DONATION_GOAL
+from config import (
+    DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM, DONATION_GOAL, PUBLIC_BASE_URL,
+)
 from models import Runner, Sponsor, LapEvent
 from wallet import apple_wallet, google_wallet
 import notifications
@@ -45,9 +50,35 @@ if DATABASE_IS_SQLITE:
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 
+def _ensure_sponsor_columns(engine) -> None:
+    """Leichtgewichtige Migration: ergänzt die Double-Opt-in-Spalten an der
+    bestehenden `sponsor`-Tabelle. `create_all` legt nur fehlende *Tabellen* an,
+    keine neuen Spalten -- eine schon existierende Neon/SQLite-DB bekäme die
+    Felder sonst nie. Funktioniert für SQLite und Postgres gleichermaßen."""
+    inspector = sa_inspect(engine)
+    if "sponsor" not in inspector.get_table_names():
+        return  # Tabelle wird gleich frisch von create_all mit allen Spalten angelegt.
+    existing = {col["name"] for col in inspector.get_columns("sponsor")}
+    # (Spaltenname -> SQL-Typ/Default für ALTER TABLE ADD COLUMN)
+    wanted = {
+        "confirmed": "BOOLEAN NOT NULL DEFAULT 0" if DATABASE_IS_SQLITE
+                     else "BOOLEAN NOT NULL DEFAULT FALSE",
+        "confirm_token": "VARCHAR",
+        "confirmed_at": "TIMESTAMP",
+    }
+    missing = {name: ddl for name, ddl in wanted.items() if name not in existing}
+    if not missing:
+        return
+    with engine.begin() as conn:
+        for name, ddl in missing.items():
+            conn.execute(sa_text(f"ALTER TABLE sponsor ADD COLUMN {name} {ddl}"))
+    print(f"[db] Sponsor-Spalten ergänzt: {', '.join(missing)}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
+    _ensure_sponsor_columns(engine)
     yield
 
 
@@ -74,7 +105,8 @@ def get_session():
 
 class SponsorIn(BaseModel):
     sponsor_name: str
-    sponsor_email: Optional[EmailStr] = None
+    # Pflicht: an diese Adresse geht die Bestätigungsmail (Double-Opt-in).
+    sponsor_email: EmailStr
     amount_per_lap: float
 
 
@@ -96,6 +128,45 @@ class RegisterOut(BaseModel):
     ticket_url: str
     wallet_apple_url: str
     wallet_google_url: str
+
+
+def _runner_display_name(runner: Runner) -> str:
+    """Anzeigename für Sponsor-Mails/-Seiten: bei Teams der Teamname, sonst Name."""
+    if runner.type == "team" and runner.team_name:
+        return runner.team_name
+    return runner.name
+
+
+def _new_sponsor(runner: Runner, data: SponsorIn) -> Sponsor:
+    """Legt ein Sponsor-Objekt mit frischem Bestätigungs-Token an (noch nicht
+    in der Session). confirmed bleibt False bis zum Klick auf den Mail-Link."""
+    return Sponsor(
+        runner_id=runner.id,
+        sponsor_name=data.sponsor_name,
+        sponsor_email=data.sponsor_email,
+        amount_per_lap=data.amount_per_lap,
+        confirm_token=secrets.token_urlsafe(32),
+    )
+
+
+def _schedule_sponsor_email(
+    background_tasks: BackgroundTasks, sponsor: Sponsor, runner: Runner
+) -> None:
+    """Verschickt die Double-Opt-in-Mail im Hintergrund. Es werden nur primitive
+    Werte übergeben (kein ORM-Objekt) -- so kann die Session längst geschlossen
+    sein, ohne DetachedInstanceError."""
+    confirm_url = (
+        f"{PUBLIC_BASE_URL}/api/sponsors/{sponsor.id}/confirm"
+        f"?token={sponsor.confirm_token}"
+    )
+    background_tasks.add_task(
+        notifications.send_sponsor_confirmation,
+        sponsor_email=sponsor.sponsor_email,
+        sponsor_name=sponsor.sponsor_name,
+        amount_per_lap=sponsor.amount_per_lap,
+        runner_display_name=_runner_display_name(runner),
+        confirm_url=confirm_url,
+    )
 
 
 @app.post("/api/register", response_model=RegisterOut)
@@ -122,19 +193,18 @@ def register(payload: RegisterIn, background_tasks: BackgroundTasks):
         session.commit()
         session.refresh(runner)
 
-        for s in payload.sponsors:
-            session.add(Sponsor(
-                runner_id=runner.id,
-                sponsor_name=s.sponsor_name,
-                sponsor_email=s.sponsor_email,
-                amount_per_lap=s.amount_per_lap,
-            ))
+        new_sponsors = [_new_sponsor(runner, s) for s in payload.sponsors]
+        for sponsor in new_sponsors:
+            session.add(sponsor)
         session.commit()
 
-        # Bestätigungs-E-Mail im Hintergrund verschicken (bzw. im Dev-Modus
-        # lokal ablegen). Läuft NACH der Antwort, damit die Anmeldung schnell
-        # bleibt und ein Mailserver-Problem sie nie scheitern lässt.
+        # Bestätigungs-E-Mail an die Läufer:in im Hintergrund verschicken (bzw.
+        # im Dev-Modus lokal ablegen). Läuft NACH der Antwort, damit die Anmeldung
+        # schnell bleibt und ein Mailserver-Problem sie nie scheitern lässt.
         background_tasks.add_task(notifications.send_confirmation, runner)
+        # Und je eine Double-Opt-in-Mail an die Sponsor:innen.
+        for sponsor in new_sponsors:
+            _schedule_sponsor_email(background_tasks, sponsor, runner)
 
         return RegisterOut(
             id=runner.id,
@@ -170,20 +240,87 @@ def get_runner(runner_id: str):
 
 
 @app.post("/api/runners/{runner_id}/sponsors")
-def add_sponsor(runner_id: str, payload: SponsorIn):
+def add_sponsor(runner_id: str, payload: SponsorIn, background_tasks: BackgroundTasks):
     with Session(engine) as session:
         runner = session.get(Runner, runner_id)
         if not runner:
             raise HTTPException(404, "Läufer:in nicht gefunden")
-        sponsor = Sponsor(
-            runner_id=runner_id,
-            sponsor_name=payload.sponsor_name,
-            sponsor_email=payload.sponsor_email,
-            amount_per_lap=payload.amount_per_lap,
-        )
+        sponsor = _new_sponsor(runner, payload)
         session.add(sponsor)
         session.commit()
-        return {"ok": True, "sponsor_id": sponsor.id}
+        # Double-Opt-in-Mail an den/die Sponsor:in; erst nach Klick zählt die Zusage.
+        _schedule_sponsor_email(background_tasks, sponsor, runner)
+        return {"ok": True, "sponsor_id": sponsor.id, "confirmation_sent": True}
+
+
+def _sponsor_status_page(title: str, body_html: str, ok: bool = True) -> HTMLResponse:
+    """Kleine gebrandete Statusseite im Event-Look (für den Bestätigungs-Link)."""
+    accent = "#E7B23E" if ok else "#F2542D"
+    html = f"""<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{escape(title)} — For Those Who Can't</title>
+<style>
+  *{{margin:0;padding:0;box-sizing:border-box;}}
+  body{{background:#100E1A;color:#EDE8DD;font-family:-apple-system,Segoe UI,Inter,sans-serif;
+        line-height:1.6;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;}}
+  .card{{max-width:480px;text-align:center;background:#1a1730;border-radius:16px;
+         padding:40px 32px;border-top:4px solid {accent};}}
+  h1{{font-size:1.5rem;margin-bottom:12px;}}
+  p{{color:#ADA3BE;margin-bottom:10px;}}
+  strong{{color:#EDE8DD;}}
+  .amount{{color:{accent};font-weight:700;}}
+  a.home{{display:inline-block;margin-top:22px;background:{accent};color:#100E1A;
+          text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;font-size:0.95rem;}}
+</style></head>
+<body><div class="card">{body_html}
+<a class="home" href="/">Zur Startseite</a></div></body></html>"""
+    return HTMLResponse(html, status_code=200 if ok else 400)
+
+
+@app.get("/api/sponsors/{sponsor_id}/confirm", response_class=HTMLResponse)
+def confirm_sponsor(sponsor_id: str, token: str = Query(default="")):
+    """Double-Opt-in: der/die Sponsor:in bestätigt die Zusage über den Link aus
+    der E-Mail. Erst danach zählt sie in die 'gesicherte' Spendensumme."""
+    with Session(engine) as session:
+        sponsor = session.get(Sponsor, sponsor_id)
+        if not sponsor:
+            return _sponsor_status_page(
+                "Link ungültig",
+                "<h1>Link nicht gefunden 🤔</h1><p>Diese Zusage gibt es nicht "
+                "(mehr). Bitte prüf den Link aus deiner E-Mail.</p>", ok=False)
+        runner = session.get(Runner, sponsor.runner_id)
+        # Werte jetzt festhalten -- nach dem commit/Session-Ende sind die
+        # ORM-Attribute detached und ein Nachladen würde fehlschlagen.
+        runner_name = escape(_runner_display_name(runner)) if runner else "die Läufer:in"
+        sponsor_name = escape(sponsor.sponsor_name)
+        amount = f"{sponsor.amount_per_lap:.2f}".replace(".", ",")
+
+        if sponsor.confirmed:
+            return _sponsor_status_page(
+                "Schon bestätigt",
+                f"<h1>Alles klar, {sponsor_name}! ✅</h1>"
+                f"<p>Deine Zusage über <span class='amount'>{amount} € pro Runde</span> "
+                f"für <strong>{runner_name}</strong> ist bereits bestätigt. Danke dir!</p>")
+
+        if not sponsor.confirm_token or not secrets.compare_digest(token, sponsor.confirm_token):
+            return _sponsor_status_page(
+                "Link ungültig",
+                "<h1>Dieser Link stimmt nicht 🔒</h1><p>Der Bestätigungs-Link ist "
+                "ungültig oder unvollständig. Bitte öffne ihn direkt aus deiner "
+                "E-Mail.</p>", ok=False)
+
+        sponsor.confirmed = True
+        sponsor.confirmed_at = datetime.utcnow()
+        session.add(sponsor)
+        session.commit()
+
+    return _sponsor_status_page(
+        "Zusage bestätigt",
+        f"<h1>Danke, {sponsor_name}! 💛</h1>"
+        f"<p>Deine Zusage über <span class='amount'>{amount} € pro gelaufener Runde</span> "
+        f"für <strong>{runner_name}</strong> ist jetzt bestätigt.</p>"
+        f"<p>Nach dem Lauf melden wir uns mit der Rundenzahl und den Spendendetails.</p>")
 
 
 # --------------------------------------------------------------------------
@@ -219,7 +356,8 @@ def live_data():
 
         leaderboard = []
         total_laps = 0
-        total_funds = 0.0
+        total_funds = 0.0     # nur bestätigte Zusagen (die "gesicherte" Summe)
+        total_pending = 0.0   # noch nicht per E-Mail bestätigte Zusagen
 
         for runner in runners:
             laps = session.exec(
@@ -229,11 +367,13 @@ def live_data():
             sponsors = session.exec(
                 select(Sponsor).where(Sponsor.runner_id == runner.id)
             ).all()
-            per_lap_total = sum(s.amount_per_lap for s in sponsors)
-            raised = lap_count * per_lap_total
+            confirmed_per_lap = sum(s.amount_per_lap for s in sponsors if s.confirmed)
+            pending_per_lap = sum(s.amount_per_lap for s in sponsors if not s.confirmed)
+            raised = lap_count * confirmed_per_lap
 
             total_laps += lap_count
             total_funds += raised
+            total_pending += lap_count * pending_per_lap
 
             leaderboard.append({
                 "id": runner.id,
@@ -251,6 +391,7 @@ def live_data():
             "totalRunners": len(runners),
             "totalLaps": total_laps,
             "fundsRaised": round(total_funds, 2),
+            "fundsPending": round(total_pending, 2),
             "donationGoal": DONATION_GOAL,
             "leaderboard": leaderboard,
         }
@@ -354,6 +495,8 @@ def _collect_participants(session: Session) -> list[dict]:
         lap_count = len(session.exec(
             select(LapEvent).where(LapEvent.runner_id == runner.id)
         ).all())
+        confirmed = [s for s in sponsors if s.confirmed]
+        pending = [s for s in sponsors if not s.confirmed]
         result.append({
             "bib_number": runner.bib_number,
             "name": runner.name,
@@ -366,6 +509,10 @@ def _collect_participants(session: Session) -> list[dict]:
             "laps": lap_count,
             "sponsor_count": len(sponsors),
             "per_lap_total": round(sum(s.amount_per_lap for s in sponsors), 2),
+            "confirmed_per_lap": round(sum(s.amount_per_lap for s in confirmed), 2),
+            "pending_per_lap": round(sum(s.amount_per_lap for s in pending), 2),
+            "sponsor_confirmed_count": len(confirmed),
+            "sponsor_pending_count": len(pending),
             "sponsor_names": [s.sponsor_name for s in sponsors],
         })
     return result
@@ -393,7 +540,8 @@ def admin_participants_csv(x_admin_token: str = Header(default="")):
     writer.writerow([
         "Startnummer", "Name", "E-Mail", "Typ", "Teamname", "Teamgröße",
         "Rundenziel", "Angemeldet am", "Runden bisher", "Anzahl Sponsoren",
-        "€ pro Runde gesamt", "Sponsoren",
+        "€ pro Runde gesamt", "€ pro Runde bestätigt", "€ pro Runde offen",
+        "Sponsoren",
     ])
     for p in participants:
         writer.writerow([
@@ -403,6 +551,8 @@ def admin_participants_csv(x_admin_token: str = Header(default="")):
             p["created_at"], p["laps"], p["sponsor_count"],
             # Deutsches Excel erwartet Komma als Dezimaltrennzeichen.
             str(p["per_lap_total"]).replace(".", ","),
+            str(p["confirmed_per_lap"]).replace(".", ","),
+            str(p["pending_per_lap"]).replace(".", ","),
             ", ".join(p["sponsor_names"]),
         ])
 
@@ -509,15 +659,19 @@ _ADMIN_HTML = """<!doctype html>
       const res=await fetch('/api/admin/participants',{headers:{'X-Admin-Token':token()}});
       const data=await res.json();
       if(!res.ok) throw new Error(data.detail||('Fehler '+res.status));
+      const eur=v=>esc(String(v).replace('.',','))+' €';
       const rows=data.participants.map(p=>
         '<tr><td class="num">'+esc(p.bib_number)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.email)+'</td>'+
         '<td>'+(p.type==='team'?('Team'+(p.team_name?' · '+esc(p.team_name):'')):'Solo')+'</td>'+
-        '<td class="num">'+esc(p.laps)+'</td><td class="num">'+esc(p.sponsor_count)+'</td>'+
-        '<td class="num">'+esc(String(p.per_lap_total).replace('.',','))+' €</td>'+
+        '<td class="num">'+esc(p.laps)+'</td>'+
+        '<td class="num">'+esc(p.sponsor_confirmed_count)+' / '+esc(p.sponsor_pending_count)+'</td>'+
+        '<td class="num">'+eur(p.confirmed_per_lap)+'</td>'+
+        '<td class="num">'+eur(p.pending_per_lap)+'</td>'+
         '<td>'+esc(p.sponsor_names.join(', '))+'</td></tr>').join('');
       document.getElementById('tablebox').innerHTML=
         '<table><thead><tr><th>Nr.</th><th>Name</th><th>E-Mail</th><th>Typ</th><th>Runden</th>'+
-        '<th>Sponsoren</th><th>€/Runde</th><th>Sponsor-Namen</th></tr></thead><tbody>'+rows+'</tbody></table>';
+        '<th>Sponsoren best./offen</th><th>€/Runde bestätigt</th><th>€/Runde offen</th>'+
+        '<th>Sponsor-Namen</th></tr></thead><tbody>'+rows+'</tbody></table>';
       show('list-msg','✓ '+data.count+' Anmeldung(en) geladen.','ok');
     }catch(e){ show('list-msg','Fehlgeschlagen: '+e.message,'err'); }
   });

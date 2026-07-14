@@ -138,8 +138,8 @@
       <input type="text" id="sp-name" required placeholder="z. B. Oma Erika oder Firma Muster GmbH">
     </div>
     <div class="field">
-      <label for="sp-email">Deine E-Mail (optional)</label>
-      <input type="email" id="sp-email" placeholder="Für Rückfragen und die Abrechnung nach dem Event">
+      <label for="sp-email">Deine E-Mail (für die Bestätigung)</label>
+      <input type="email" id="sp-email" required placeholder="Hierhin schicken wir deinen Bestätigungs-Link">
     </div>
     <div class="field">
       <label for="sp-amount">Betrag pro gelaufener Runde (€)</label>
@@ -227,7 +227,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sponsor_name: document.getElementById('sp-name').value.trim(),
-          sponsor_email: document.getElementById('sp-email').value.trim() || null,
+          sponsor_email: document.getElementById('sp-email').value.trim(),
           amount_per_lap: amount,
         }),
         signal: controller.signal,
@@ -236,8 +236,9 @@
 
       errorEl.classList.remove('show');
       successEl.innerHTML = 'Danke, <strong>' + document.getElementById('sp-name').value.trim() +
-        '</strong>! Du unterstützt ' + runnerName + ' mit <strong>' + eur(amount) +
-        ' pro Runde</strong>. 💛';
+        '</strong>! Wir haben dir eine <strong>Bestätigungs-E-Mail</strong> geschickt — ' +
+        'klick bitte den Link darin, damit deine Zusage über <strong>' + eur(amount) +
+        ' pro Runde</strong> für ' + runnerName + ' zählt. 💛';
       successEl.classList.add('show');
       form.querySelectorAll('input, button').forEach(el => el.style.display = 'none');
       calcHint.style.display = 'none';
