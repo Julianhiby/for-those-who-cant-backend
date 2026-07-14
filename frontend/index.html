@@ -1652,6 +1652,7 @@
             <div class="amount" id="funds-amount">28.470 €</div>
             <div class="of">von <span id="funds-goal">25.000 €</span> Spendenziel</div>
             <div class="donation-bar"><div class="donation-bar-fill" id="donation-bar-fill"></div></div>
+            <div class="of" id="funds-pending" style="display:none; margin-top:6px; opacity:0.75;"></div>
           </div>
 
           <div class="integration-note" id="integration-note">
@@ -1725,7 +1726,9 @@
         <div id="sponsor-list"></div>
         <button type="button" id="sponsor-add" class="btn btn-ghost" style="padding:10px 18px; font-size:0.78rem; margin-top:6px;">+ Sponsor:in hinzufügen</button>
         <div style="font-family:var(--mono); font-size:0.72rem; color:var(--paper-dim); margin-top:10px;">
-          Du kannst Sponsor:innen auch später noch nachtragen — kein Muss für die Anmeldung.
+          Kein Muss für die Anmeldung — du kannst Sponsor:innen auch später über deinen
+          persönlichen Link nachtragen. Jede:r Sponsor:in bekommt eine kurze
+          Bestätigungsmail (darum ist die E-Mail nötig); erst nach dem Klick zählt die Zusage.
         </div>
       </div>
 
@@ -1967,7 +1970,7 @@
     row.className = 'sponsor-row';
     row.innerHTML =
       '<input type="text" placeholder="Name der Sponsorin/des Sponsors" class="sponsor-name">' +
-      '<input type="email" placeholder="E-Mail (optional)" class="sponsor-email">' +
+      '<input type="email" placeholder="E-Mail (für Bestätigung)" class="sponsor-email">' +
       '<input type="number" placeholder="€ / Runde" min="0" step="0.5" class="sponsor-amount">' +
       '<button type="button" title="Entfernen">✕</button>';
     row.querySelector('button').addEventListener('click', () => row.remove());
@@ -1977,11 +1980,13 @@
   addSponsorRow(); // eine leere Zeile von Anfang an anzeigen
 
   function collectSponsors(){
+    // E-Mail ist Pflicht: an sie geht die Bestätigungsmail (Double-Opt-in).
+    // Unvollständige Zeilen (ohne Name/E-Mail/Betrag) werden verworfen.
     return Array.from(sponsorListEl.querySelectorAll('.sponsor-row')).map(row => ({
       sponsor_name: row.querySelector('.sponsor-name').value.trim(),
-      sponsor_email: row.querySelector('.sponsor-email').value.trim() || null,
+      sponsor_email: row.querySelector('.sponsor-email').value.trim(),
       amount_per_lap: parseFloat(row.querySelector('.sponsor-amount').value) || 0,
-    })).filter(s => s.sponsor_name && s.amount_per_lap > 0);
+    })).filter(s => s.sponsor_name && s.sponsor_email && s.amount_per_lap > 0);
   }
 
   const form = document.getElementById('reg-form');
@@ -2467,7 +2472,20 @@
   const statLaps = document.getElementById('stat-laps');
   const statFunds = document.getElementById('stat-funds');
   const fundsAmount = document.getElementById('funds-amount');
+  const fundsPendingEl = document.getElementById('funds-pending');
   const badgeLaps = document.getElementById('badge-laps');
+
+  // Zeigt die Summe der noch nicht bestätigten Sponsor-Zusagen an (die Hauptzahl
+  // oben zählt nur bestätigte). Nur bei echten Daten und wenn es offene gibt.
+  function updatePending(pending){
+    if (!fundsPendingEl) return;
+    if (typeof pending === 'number' && pending > 0){
+      fundsPendingEl.textContent = 'inkl. ' + formatEUR(Math.round(pending)) + ' noch offener Zusagen';
+      fundsPendingEl.style.display = '';
+    } else {
+      fundsPendingEl.style.display = 'none';
+    }
+  }
 
   // Spendenziel: Default passend zum Backend-Standard (DONATION_GOAL=25000),
   // wird durch die echte Antwort von /api/live überschrieben (siehe pollLiveData).
@@ -2539,6 +2557,7 @@
       const data = await res.json();
       if (typeof data.donationGoal === 'number') donationGoal = data.donationGoal;
       applyLiveStats(data.totalLaps, data.fundsRaised);
+      updatePending(data.fundsPending);
       if (runnersEl && typeof data.totalRunners === 'number'){
         runnersEl.textContent = data.totalRunners.toLocaleString('de-DE');
       }

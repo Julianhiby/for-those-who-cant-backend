@@ -46,6 +46,11 @@ def _no_email(monkeypatch):
     monkeypatch.setattr(
         app_module.notifications, "send_confirmation", lambda runner: calls.append(runner)
     )
+    # Sponsor-Bestätigungsmails (Double-Opt-in) ebenfalls neutralisieren -- sonst
+    # würde der Hintergrund-Task in den Dev-Modus fallen und HTML-Dateien schreiben.
+    monkeypatch.setattr(
+        app_module.notifications, "send_sponsor_confirmation", lambda **kw: None
+    )
     return calls
 
 

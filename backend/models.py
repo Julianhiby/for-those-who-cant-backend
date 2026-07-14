@@ -47,6 +47,14 @@ class Sponsor(SQLModel, table=True):
     amount_per_lap: float  # Euro, die dieser Sponsor pro gelaufener Runde zahlt
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+    # Double-Opt-in: die Zusage zählt erst als "gesichert", wenn der/die Sponsor:in
+    # sie per E-Mail-Link bestätigt hat. So bleibt die angezeigte Spendensumme
+    # akkurat (keine Tippfehler-/Fake-Zusagen). confirm_token wird beim Anlegen
+    # gesetzt und bleibt stehen (der Bestätigungs-Link ist damit idempotent).
+    confirmed: bool = Field(default=False, index=True)
+    confirm_token: Optional[str] = Field(default=None)
+    confirmed_at: Optional[datetime] = None
+
     runner: Runner = Relationship(back_populates="sponsors")
 
 
