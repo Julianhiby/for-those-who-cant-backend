@@ -38,7 +38,8 @@ def _bool(value: str | None, default: bool = False) -> bool:
 EVENT_NAME = os.getenv("EVENT_NAME", "For Those Who Can't")
 
 # Länge einer Runde in Kilometern (für die km-Anzeige im Leaderboard).
-LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "1.0"))
+# Muss zur tatsächlichen Strecke passen -- die Website nennt 5,0 km Rundenlänge.
+LAP_DISTANCE_KM = float(os.getenv("LAP_DISTANCE_KM", "5.0"))
 
 # Spendenziel in Euro, für die Fortschrittsleiste auf der Website.
 DONATION_GOAL = float(os.getenv("DONATION_GOAL", "25000"))
