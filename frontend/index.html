@@ -661,13 +661,19 @@
     display:flex;
     align-items:center;
     gap:8px;
-    color: var(--ember);
+    /* Gedaempft, solange das Rennen NICHT laeuft -- erst mit .running wird es
+       zum roten, pulsierenden Live-Signal (siehe tick() im Script). */
+    color: var(--paper-dim);
     font-weight:700;
     letter-spacing: 0.06em;
   }
+  .live-badge.running{ color: var(--ember); }
   .live-badge .pulse{
     width:8px; height:8px;
     border-radius:50%;
+    background: var(--paper-dim);
+  }
+  .live-badge.running .pulse{
     background: var(--ember);
     animation: pulse 1.4s infinite;
   }
@@ -1275,7 +1281,7 @@
       </div>
       <div class="hero-stats">
         <div>
-          <div class="stat-num" id="stat-runners">0</div>
+          <div class="stat-num" id="stat-runners">—</div>
           <div class="stat-label">Angemeldete Läufer:innen</div>
         </div>
         <div>
@@ -1493,8 +1499,8 @@
 
     <div class="tracker-panel">
       <div class="tracker-topbar">
-        <div class="live-badge"><span class="pulse"></span>LIVE — RENNEN LÄUFT</div>
-        <div class="clock-num">Stunde <span id="race-hour">10</span> / 24 · <span id="race-clock">10:14:02</span></div>
+        <div class="live-badge" id="live-badge"><span class="pulse"></span><span id="live-badge-text">Rennen noch nicht gestartet</span></div>
+        <div class="clock-num" id="race-clock-wrap">Stunde <span id="race-hour">—</span> / 24 · <span id="race-clock">—</span></div>
         <div style="color:var(--paper-dim);" id="tracker-active-count">Noch keine Läufer:innen angemeldet</div>
         <button type="button" class="share-page-btn" id="share-page-btn" title="Seite teilen">↗ Teilen</button>
       </div>
@@ -1502,11 +1508,11 @@
       <div class="tracker-body">
         <div class="tracker-stats">
           <div class="tracker-stat">
-            <div class="n" id="badge-laps">0</div>
+            <div class="n" id="badge-laps">—</div>
             <div class="l">Runden gesamt gelaufen</div>
           </div>
           <div class="tracker-stat">
-            <div class="n" id="badge-km">0</div>
+            <div class="n" id="badge-km">—</div>
             <div class="l">Kilometer gesamt</div>
           </div>
           <div class="tracker-scan-note">
@@ -1522,7 +1528,7 @@
           <div class="runner-empty" id="runner-empty" style="display:none;">Keine Treffer — anderen Namen versuchen.</div>
 
           <div class="donation-ticker">
-            <div class="amount" id="funds-amount">28.470 €</div>
+            <div class="amount" id="funds-amount">—</div>
             <div class="of">von <span id="funds-goal">25.000 €</span> Spendenziel</div>
             <div class="donation-bar"><div class="donation-bar-fill" id="donation-bar-fill"></div></div>
             <div class="of" id="funds-pending" style="display:none; margin-top:6px; opacity:0.75;"></div>
@@ -2014,19 +2020,22 @@
     runnerEmptyEl.style.display = anyVisible ? 'none' : 'block';
   });
 
-  /* ---------------- Live-Daten: echtes Backend, sonst Mock-Fallback ---------------- */
-  // Sobald API_BASE_URL (weiter oben beim Anmeldeformular) gesetzt ist, holt sich
-  // diese Funktion die echten Zahlen (Gesamtrunden, Spendenstand) von /api/live.
-  // Ist das Backend nicht erreichbar oder API_BASE_URL leer, läuft stattdessen
-  // die Mock-Simulation weiter -- die Seite funktioniert also in beiden Fällen.
+  /* ---------------- Live-Daten aus dem Backend ---------------- */
+  // Alle angezeigten Zahlen kommen aus /api/live. Ist das Backend nicht
+  // erreichbar, wird bewusst NICHTS angezeigt (Platzhalter "—") -- es gibt
+  // keine Beispiel-/Simulationswerte mehr, damit nie erfundene Spendenzahlen
+  // auf der Seite stehen.
   //
   // HINWEIS: Runden entstehen ausschliesslich durch die QR-Scans am Start/Ziel
   // (/scan.html -> POST /api/scan/lap). Es gibt bewusst kein GPS-Tracking und
   // keine Positionen auf der Karte -- der Live-Stand zeigt Runden, Kilometer
   // und den Spendenstand.
 
-  let mockLaps = 1472;
-  let mockFunds = 28470;
+  // WICHTIG: Hier stehen bewusst KEINE Beispiel-/Startwerte mehr. Alle Zahlen
+  // (Runden, Kilometer, Spendenstand) kommen ausschliesslich aus /api/live.
+  // Solange noch nichts geladen ist -- z. B. waehrend des Render-Kaltstarts --
+  // bleiben die Platzhalter "—" stehen. Lieber ehrlich nichts anzeigen als
+  // erfundene Spendenzahlen.
   const statLaps = document.getElementById('stat-laps');
   const statFunds = document.getElementById('stat-funds');
   const fundsAmount = document.getElementById('funds-amount');
@@ -2096,20 +2105,8 @@
     if (badgeLaps) badgeLaps.textContent = laps.toLocaleString('de-DE');
   }
 
-  applyLiveStats(mockLaps, mockFunds);
-
-  function mockTick(){
-    // Simuliert neue Runden/Spenden -- nur solange kein echtes Backend läuft.
-    mockLaps += Math.floor(Math.random() * 3);
-    mockFunds += Math.floor(Math.random() * 3) * 10;
-    applyLiveStats(mockLaps, mockFunds);
-  }
-
   async function pollLiveData(){
-    if (!API_BASE_URL){
-      mockTick();
-      return;
-    }
+    if (!API_BASE_URL) return;
     try {
       const res = await fetch(API_BASE_URL + '/api/live');
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2129,28 +2126,57 @@
         applyRealRunners(data.leaderboard, data.totalRunners);
       }
     } catch (err) {
-      mockTick(); // Backend gerade nicht erreichbar -> Mock-Werte weiterlaufen lassen
+      // Backend gerade nicht erreichbar (z. B. Render-Kaltstart): bewusst NICHTS
+      // anzeigen bzw. den letzten echten Stand stehen lassen -- niemals Zahlen
+      // erfinden. Der naechste Poll versucht es erneut.
     }
   }
 
   setInterval(pollLiveData, 8000);
 
-  /* ---------------- Race clock (mock) ---------------- */
+  /* ---------------- Event-Zeiten (eine Quelle für Uhr + Countdown) ---------------- */
+  const EVENT_START = new Date('2027-06-13T12:00:00+02:00');
+  const RACE_DURATION_MS = 24 * 3600 * 1000;
+
+  /* ---------------- Rennuhr: aus dem echten Startdatum abgeleitet ----------------
+     Frueher lief hier eine erfundene Uhr, die immer "Stunde 10 / 24" behauptete --
+     auch Monate vor dem Event. Jetzt zeigt sie die Wahrheit: vor dem Start nichts,
+     waehrend des Rennens die echte verstrichene Zeit, danach das Ergebnis. */
   const raceClock = document.getElementById('race-clock');
   const raceHour = document.getElementById('race-hour');
-  let seconds = 10 * 3600 + 14 * 60 + 2; // starting mock time: hour 10
+  const liveBadge = document.getElementById('live-badge');
+  const liveBadgeText = document.getElementById('live-badge-text');
+
   function tick(){
-    seconds += 1;
-    const h = Math.floor(seconds/3600);
-    const m = Math.floor((seconds%3600)/60);
-    const s = seconds%60;
+    const elapsed = Date.now() - EVENT_START.getTime();
+
+    if (elapsed < 0){                       // Event liegt noch in der Zukunft
+      raceClock.textContent = '—';
+      raceHour.textContent = '—';
+      liveBadgeText.textContent = 'Rennen noch nicht gestartet';
+      liveBadge.classList.remove('running');
+      return;
+    }
+    if (elapsed >= RACE_DURATION_MS){       // Rennen vorbei
+      raceClock.textContent = '24:00:00';
+      raceHour.textContent = '24';
+      liveBadgeText.textContent = 'Rennen beendet';
+      liveBadge.classList.remove('running');
+      return;
+    }
+    const total = Math.floor(elapsed / 1000);   // laeuft gerade
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
     raceClock.textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-    raceHour.textContent = Math.min(h,24);
+    raceHour.textContent = Math.min(h + 1, 24);
+    liveBadgeText.textContent = 'LIVE — RENNEN LÄUFT';
+    liveBadge.classList.add('running');
   }
+  tick();
   setInterval(tick, 1000);
 
   /* ---------------- Countdown bis zum Event-Start ---------------- */
-  const EVENT_START = new Date('2027-06-13T12:00:00+02:00');
   const cdDays = document.getElementById('cd-days');
   const cdHours = document.getElementById('cd-hours');
   const cdMins = document.getElementById('cd-mins');
