@@ -2,9 +2,10 @@
 
 Backend + Website für den Spendenlauf **„For Those Who Can't"**.
 Läufer:innen melden sich an (Solo oder Team), sammeln Sponsoren (Betrag pro
-Runde), ein GPS-Tracker meldet gelaufene Runden per Webhook, und die Website
-zeigt live ein Leaderboard und den Spendenstand. Optional bekommt jede:r
-Teilnehmer:in ein Startticket für Apple/Google Wallet.
+Runde), Helfer:innen zählen jede Runde per QR-Scan am Start/Ziel (siehe
+Scan-Station), und die Website zeigt live ein Leaderboard und den Spendenstand.
+Optional bekommt jede:r Teilnehmer:in ein Startticket für Apple/Google Wallet.
+(Der Webhook `/api/webhook/lap` bleibt für eine spätere GPS-/Chip-Anbindung.)
 
 ## Projektstruktur
 

@@ -28,12 +28,6 @@
 <!-- Schriften werden selbst gehostet (DSGVO) -- keine Verbindung zu Google. -->
 <link rel="stylesheet" href="/assets/fonts/fonts.css">
 
-<!-- Leaflet: fürs Rendern der echten Streckenkarte (Route aus GPX/GeoJSON) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- leaflet-gpx: liest .gpx-Dateien (z.B. Export aus Strava/Komoot) direkt ein -->
-<script src="https://unpkg.com/leaflet-gpx@1.7.0/gpx.js"></script>
-
 <style>
   :root{
     --ink: #100E1A;
@@ -554,37 +548,6 @@
     padding: 30px;
   }
 
-  /* ---- Echte Streckenkarte (Leaflet) ---- */
-  #course-map-real{
-    width: 100%;
-    height: 360px;
-    border-radius: 4px;
-    background: var(--surface-2);
-    filter: grayscale(0.15) brightness(0.9);
-  }
-  .map-loading-note{
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--paper-dim);
-    margin-top: 12px;
-    line-height: 1.6;
-  }
-  .map-loading-note code{
-    background: rgba(255,255,255,0.06);
-    padding: 1px 5px;
-    border-radius: 2px;
-  }
-  /* Leaflet UI ans Dark-Theme anpassen */
-  .leaflet-control-zoom a{
-    background: var(--surface) !important;
-    color: var(--paper) !important;
-    border-color: var(--line-soft) !important;
-  }
-  .leaflet-control-attribution{
-    background: rgba(18,21,28,0.75) !important;
-    color: var(--paper-dim) !important;
-  }
-  .leaflet-control-attribution a{ color: var(--hivis) !important; }
   .course-facts{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -719,107 +682,41 @@
     display:grid;
     grid-template-columns: 1.1fr 0.9fr;
   }
-  .tracker-map{
-    position: relative;
-    padding: 0;
+  /* ---- Rundenstand (ersetzt die frühere GPS-Karte) ---- */
+  .tracker-stats{
+    padding: 40px 34px;
     min-height: 420px;
     border-right: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 34px;
   }
-  #tracker-map-real{
-    width: 100%;
-    height: 100%;
-    min-height: 420px;
-    filter: grayscale(0.15) brightness(0.9);
+  .tracker-stat .n{
+    font-family: var(--display);
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    line-height: 1;
+    color: var(--hivis);
+    font-variant-numeric: tabular-nums;
   }
-  .map-stat-badge{
-    position: absolute;
-    top: 18px;
-    left: 18px;
-    z-index: 500;
-    background: rgba(16,14,26,0.88);
-    border: 1px solid var(--line-soft);
-    border-radius: 4px;
-    padding: 10px 16px;
+  .tracker-stat .l{
     font-family: var(--mono);
-    pointer-events: none;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+    margin-top: 8px;
   }
-  .map-stat-badge .n{ font-size: 1.1rem; font-weight:700; color: var(--paper); }
-  .map-stat-badge .l{ font-size: 0.62rem; color: var(--paper-dim); text-transform:uppercase; letter-spacing:0.06em; }
-
-  /* ---- Routen-Editor ---- */
-  .route-editor-toggle{
-    position: absolute;
-    top: 18px;
-    right: 18px;
-    z-index: 500;
-    background: var(--surface);
-    color: var(--paper);
-    border: 1px solid var(--line-soft);
+  .tracker-scan-note{
     font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    padding: 9px 14px;
-    border-radius: 3px;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .route-editor-toggle:hover{ border-color: var(--hivis); color: var(--hivis); }
-  .route-editor-toggle.active{ background: var(--hivis); color: var(--ink); border-color: var(--hivis); }
-
-  .route-editor-panel{
-    position: absolute;
-    bottom: 18px;
-    left: 18px;
-    right: 18px;
-    z-index: 500;
-    background: rgba(16,14,26,0.94);
-    border: 1px solid var(--line-soft);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--paper-dim);
+    border: 1px dashed var(--line-soft);
     border-radius: 4px;
     padding: 14px 16px;
-    display: none;
   }
-  .route-editor-panel.open{ display:block; }
-  .route-editor-hint{
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--paper-dim);
-    margin-bottom: 10px;
-  }
-  .route-editor-btns{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 10px; }
-  .route-editor-btns button{
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.03em;
-    padding: 8px 12px;
-    border-radius: 3px;
-    border: 1px solid var(--line-soft);
-    background: var(--surface);
-    color: var(--paper);
-  }
-  .route-editor-btns button:hover{ border-color: var(--hivis); color: var(--hivis); }
-  .route-editor-btns button.primary{ background: var(--hivis); color: var(--ink); border-color: var(--hivis); }
-  .route-editor-output{
-    width: 100%;
-    background: var(--ink);
-    border: 1px solid var(--line-soft);
-    color: var(--paper-dim);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    padding: 10px;
-    border-radius: 3px;
-    resize: vertical;
-    min-height: 70px;
-  }
-  .leaflet-control-zoom a{
-    background: var(--surface) !important;
-    color: var(--paper) !important;
-    border-color: var(--line-soft) !important;
-  }
-  .leaflet-control-attribution{
-    background: rgba(16,14,26,0.75) !important;
-    color: var(--paper-dim) !important;
-    font-size: 0.65rem !important;
-  }
-  .leaflet-control-attribution a{ color: var(--hivis) !important; }
+  .tracker-scan-note strong{ color: var(--hivis); font-weight: 700; }
 
   .tracker-side{ padding: 28px 30px; display:flex; flex-direction:column; min-height: 420px; }
   .tracker-side h4{
@@ -1221,13 +1118,13 @@
     .why-grid, .format-grid, .course-grid, .dedication-grid{ grid-template-columns: 1fr; }
     .dedication-grid{ gap: 36px; }
     .tracker-body{ grid-template-columns: 1fr; }
-    .tracker-map{ border-right:none; border-bottom: 1px solid var(--line-soft); min-height: 300px; }
-    #tracker-map-real{ min-height: 300px; }
+    .tracker-stats{
+      border-right:none; border-bottom: 1px solid var(--line-soft);
+      min-height: auto; padding: 32px 24px; gap: 26px;
+    }
     .tracker-side{ min-height: auto; }
     form.reg-form{ grid-template-columns: 1fr; }
     .impact-row{ grid-template-columns: 1fr; gap: 28px; }
-    /* Routen-Editor ist ein Bearbeitungs-Werkzeug -> auf kleineren Screens weg. */
-    .route-editor-toggle, .route-editor-panel{ display: none !important; }
   }
 
   /* ---------- HANDY ---------- */
@@ -1351,7 +1248,7 @@
       <a href="#format">Format</a>
       <a href="#widmung">Für wen</a>
       <a href="#strecke">Strecke</a>
-      <a href="#live">Live-Tracker</a>
+      <a href="#live">Live-Stand</a>
       <a href="#faq">FAQ</a>
     </nav>
     <a href="#anmeldung" class="nav-cta">Anmelden</a>
@@ -1374,7 +1271,7 @@
       </p>
       <div class="hero-cta">
         <a href="#anmeldung" class="btn btn-primary">Jetzt anmelden →</a>
-        <a href="#live" class="btn btn-ghost">Live-Tracker ansehen</a>
+        <a href="#live" class="btn btn-ghost">Live-Stand ansehen</a>
       </div>
       <div class="hero-stats">
         <div>
@@ -1586,11 +1483,11 @@
 <section class="tracker" id="live">
   <div class="wrap">
     <div class="section-head">
-      <div class="eyebrow">Live-Tracker</div>
+      <div class="eyebrow">Live-Rundenstand</div>
       <h2>Verfolge jede Runde. In Echtzeit.</h2>
       <p>
-        Jede:r Läufer:in trägt während des Rennens ein GPS-Gerät. Position, gelaufene Runden und
-        Distanz aller Teilnehmenden sind hier live sichtbar — 24 Stunden durchgehend.
+        Jede Runde wird am Start/Ziel per QR-Scan erfasst — Rundenzahl, Distanz und
+        Spendenstand aller Teilnehmenden sind hier live sichtbar, 24 Stunden durchgehend.
       </p>
     </div>
 
@@ -1603,26 +1500,18 @@
       </div>
 
       <div class="tracker-body">
-        <div class="tracker-map">
-          <div id="tracker-map-real"></div>
-          <div class="map-stat-badge">
-            <div class="n" id="badge-laps">1.472</div>
+        <div class="tracker-stats">
+          <div class="tracker-stat">
+            <div class="n" id="badge-laps">0</div>
             <div class="l">Runden gesamt gelaufen</div>
           </div>
-          <!-- Bearbeitungswerkzeug für Organisator:innen -- wird nur sichtbar,
-               wenn die Seite mit ?edit=1 aufgerufen wird (z. B. /?edit=1). -->
-          <button type="button" class="route-editor-toggle" id="route-editor-toggle" hidden>✏ Route selbst einzeichnen</button>
-          <div class="route-editor-panel" id="route-editor-panel">
-            <div class="route-editor-hint">
-              Klicke auf die Karte, um nacheinander Punkte entlang deiner echten Strecke zu setzen.
-            </div>
-            <div class="route-editor-btns">
-              <button type="button" id="route-undo">↩ Letzten Punkt entfernen</button>
-              <button type="button" id="route-clear">🗑 Alle Punkte löschen</button>
-              <button type="button" id="route-apply" class="primary">✓ Als Route übernehmen</button>
-              <button type="button" id="route-copy">⧉ Koordinaten kopieren</button>
-            </div>
-            <textarea class="route-editor-output" id="route-editor-output" readonly placeholder="Deine gesetzten Punkte erscheinen hier als Koordinaten-Liste …"></textarea>
+          <div class="tracker-stat">
+            <div class="n" id="badge-km">0</div>
+            <div class="l">Kilometer gesamt</div>
+          </div>
+          <div class="tracker-scan-note">
+            ⦿ Jede Runde wird am Start/Ziel per <strong>QR-Scan</strong> erfasst —
+            kein GPS-Gerät nötig.
           </div>
         </div>
 
@@ -1637,13 +1526,6 @@
             <div class="of">von <span id="funds-goal">25.000 €</span> Spendenziel</div>
             <div class="donation-bar"><div class="donation-bar-fill" id="donation-bar-fill"></div></div>
             <div class="of" id="funds-pending" style="display:none; margin-top:6px; opacity:0.75;"></div>
-          </div>
-
-          <div class="integration-note" id="integration-note">
-            <strong>Für Entwickler:innen:</strong> Sobald echte Anmeldungen vorliegen, ersetzt die
-            Läufer:innen-Liste links automatisch diese Beispieldaten. Die Positionen auf der Karte
-            bleiben aber Beispieldaten, bis ein echter GPS-Tracking-Anbieter angebunden ist (siehe
-            Kommentare bei <code>runnerData</code> im Script-Teil).
           </div>
 
           <div class="stream-block">
@@ -1737,8 +1619,8 @@
         <div class="faq-a"><div class="faq-a-inner">Nein. Du läufst so viele Runden, wie du schaffst — Pausen, Schlaf und Wechsel sind jederzeit möglich. Es zählt jede gelaufene Runde, nicht ein Zieleinlauf.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" aria-expanded="false"><span>Wie funktioniert das GPS-Tracking genau?</span><span class="plus" aria-hidden="true">+</span></button>
-        <div class="faq-a"><div class="faq-a-inner">Beim Start erhältst du ein GPS-Gerät, das deine Position während des gesamten Rennens überträgt. Deine Runden, Distanz und Position erscheinen live im Tracker auf dieser Seite.</div></div>
+        <button class="faq-q" aria-expanded="false"><span>Wie werden meine Runden gezählt?</span><span class="plus" aria-hidden="true">+</span></button>
+        <div class="faq-a"><div class="faq-a-inner">Über deine Startnummer bzw. dein QR-Startticket: Jedes Mal, wenn du am Start/Ziel vorbeikommst, scannen unsere Helfer:innen deinen QR-Code — und deine Runde ist gezählt. Rundenzahl, Distanz und der daraus entstehende Spendenbetrag erscheinen dann live auf dieser Seite. Du brauchst dafür kein GPS-Gerät und keine App.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false"><span>Muss ich eine eigene Stirnlampe mitbringen?</span><span class="plus" aria-hidden="true">+</span></button>
@@ -1772,7 +1654,7 @@
           <a href="#warum">Warum</a>
           <a href="#format">Format</a>
           <a href="#strecke">Strecke</a>
-          <a href="#live">Live-Tracker</a>
+          <a href="#live">Live-Stand</a>
         </div>
         <div class="footer-col">
           <h5>Teilnehmen</h5>
@@ -2056,155 +1938,6 @@
     }
   });
 
-  /* ---------------- Echte Streckenkarte (Leaflet + GPX) ---------------- */
-  // So bekommst du deine echte Strecke rein:
-  //  1) Route in Strava (strava.com/routes) oder Komoot erstellen/öffnen.
-  //  2) Auf der Route/Aktivität "Exportieren" -> GPX wählen und herunterladen.
-  //  3) Datei umbenennen in "strecke.gpx" und in denselben Ordner wie diese index.html legen.
-  //  4) Fertig -- die Karte unten lädt die Datei automatisch und zoomt passend rein.
-  //
-  // Alternative: eine .geojson-Datei einbinden (z.B. aus geojson.io) statt GPX --
-  // dafür unten im "else"-Zweig L.geoJSON(deineDaten) statt new L.GPX(...) verwenden.
-
-  const mapEl = document.getElementById('course-map-real');
-  if (mapEl && window.L){
-    // (Bereich "Strecke" nutzt aktuell das Strava-Embed weiter oben — dieser Block
-    // greift nur, falls du dort später wieder auf eine eigene Leaflet-Karte wechselst.)
-    const map = L.map('course-map-real', { zoomControl: true, scrollWheelZoom: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
-    }).addTo(map);
-  }
-
-  /* ---------------- Live-Tracker: echte Route + Läufer-Marker + Suche ---------------- */
-  // HINWEIS: Sowohl die Streckenkoordinaten als auch die Läuferliste unten sind
-  // Beispieldaten. Für den echten Betrieb:
-  //  1) Ersetze "routeCoords" durch die echten [lat, lon]-Punkte deiner Strecke
-  //     (aus deiner GPX-/GeoJSON-Datei exportiert).
-  //  2) Ersetze fetchLiveData() weiter unten durch einen echten Abruf deiner
-  //     GPS-Tracking-Plattform (Namen, Position/Fortschritt je Läufer:in, Runden).
-
-  let routeCoords = [
-    [51.30037, 7.40494],
-    [51.29973, 7.40535],
-    [51.29926, 7.40606],
-    [51.29885, 7.40754],
-    [51.29853, 7.40913],
-    [51.29862, 7.40984],
-    [51.29806, 7.41109],
-    [51.29760, 7.41160],
-    [51.29721, 7.41175],
-    [51.29744, 7.41233],
-    [51.29775, 7.41287],
-    [51.29769, 7.41405],
-    [51.29803, 7.41568],
-    [51.29795, 7.41671],
-    [51.29764, 7.41779],
-    [51.29700, 7.41882],
-    [51.29681, 7.41918],
-    [51.29688, 7.41998],
-    [51.29730, 7.42088],
-    [51.29779, 7.42214],
-    [51.29824, 7.42303],
-    [51.29854, 7.42384],
-    [51.29824, 7.42500],
-    [51.29735, 7.42568],
-    [51.29671, 7.42600],
-    [51.29615, 7.42611],
-    [51.29655, 7.42645],
-    [51.29675, 7.42693],
-    [51.29662, 7.42751],
-    [51.29651, 7.42796],
-    [51.29646, 7.42843],
-    [51.29666, 7.42871],
-    [51.29705, 7.42873],
-    [51.29737, 7.42811],
-    [51.29773, 7.42759],
-    [51.29820, 7.42697],
-    [51.29910, 7.42615],
-    [51.29988, 7.42652],
-    [51.30011, 7.42654],
-    [51.29989, 7.42605],
-    [51.29975, 7.42545],
-    [51.29976, 7.42424],
-    [51.29987, 7.42325],
-    [51.30011, 7.42285],
-    [51.30040, 7.42267],
-    [51.30071, 7.42237],
-    [51.30054, 7.42201],
-    [51.29995, 7.42203],
-    [51.29971, 7.42186],
-    [51.29951, 7.42158],
-    [51.29941, 7.42106],
-    [51.29928, 7.42048],
-    [51.29914, 7.42018],
-    [51.29947, 7.41945],
-    [51.29976, 7.41900],
-    [51.29979, 7.41853],
-    [51.29980, 7.41840],
-    [51.30010, 7.41827],
-    [51.30061, 7.41829],
-    [51.30128, 7.41838],
-    [51.30148, 7.41829],
-    [51.30153, 7.41801],
-    [51.30094, 7.41741],
-    [51.30059, 7.41705],
-    [51.30039, 7.41662],
-    [51.30055, 7.41548],
-    [51.30043, 7.41424],
-    [51.30023, 7.41348],
-    [51.30000, 7.41303],
-    [51.29977, 7.41271],
-    [51.29983, 7.41200],
-    [51.29995, 7.41151],
-    [51.30006, 7.41106],
-    [51.30007, 7.41052],
-    [51.30010, 7.40977],
-    [51.30015, 7.40910],
-    [51.30016, 7.40857],
-    [51.30022, 7.40805],
-    [51.30028, 7.40773],
-    [51.30046, 7.40769],
-    [51.30069, 7.40775],
-    [51.30089, 7.40769],
-    [51.30082, 7.40747],
-    [51.30062, 7.40708],
-    [51.30022, 7.40680],
-    [51.30008, 7.40672],
-    [51.30023, 7.40646],
-    [51.30044, 7.40620],
-    [51.30061, 7.40565],
-    [51.30075, 7.40526],
-    [51.30063, 7.40504],
-    [51.30050, 7.40500],
-    [51.30037, 7.40494],
-  ];
-
-  function buildCumulative(coords){
-    const cum = [0];
-    for (let i = 1; i < coords.length; i++){
-      const [la1, lo1] = coords[i-1], [la2, lo2] = coords[i];
-      const d = Math.hypot(la2 - la1, lo2 - lo1);
-      cum.push(cum[i-1] + d);
-    }
-    return cum;
-  }
-  let routeCum = buildCumulative(routeCoords);
-
-  function pointAtFraction(t){
-    const total = routeCum[routeCum.length - 1];
-    const target = ((t % 1) + 1) % 1 * total;
-    for (let i = 1; i < routeCum.length; i++){
-      if (target <= routeCum[i]){
-        const segLen = routeCum[i] - routeCum[i-1];
-        const segT = segLen === 0 ? 0 : (target - routeCum[i-1]) / segLen;
-        const [la1, lo1] = routeCoords[i-1], [la2, lo2] = routeCoords[i];
-        return [la1 + (la2 - la1) * segT, lo1 + (lo2 - lo1) * segT];
-      }
-    }
-    return routeCoords[0];
-  }
-
   // Farben für die Läufer:innen-Punkte (sobald echte Anmeldungen da sind).
   const runnerColors = ['#F2542D', '#E7B23E', '#A78BFA', '#D98B6B', '#6FCF97', '#5FA8D3'];
 
@@ -2212,156 +1945,6 @@
   // Sobald echte Anmeldungen vorliegen, füllt applyRealRunners() (siehe unten)
   // dieses Array mit den echten Namen/Runden/Kilometern aus /api/live.
   let runnerData = [];
-
-  const trackerMapEl = document.getElementById('tracker-map-real');
-  const runnerMarkers = {};
-  let trackerMap = null;
-  let routeLine = null;
-  let routeStartMarker = null;
-
-
-  function drawRoute(coords){
-    if (routeLine) trackerMap.removeLayer(routeLine);
-    if (routeStartMarker) trackerMap.removeLayer(routeStartMarker);
-    routeCoords = coords;
-    routeCum = buildCumulative(routeCoords);
-    routeLine = L.polyline(routeCoords, { color: '#E7B23E', weight: 4, opacity: 0.85 }).addTo(trackerMap);
-    routeStartMarker = L.circleMarker(routeCoords[0], {
-      radius: 7, color: '#F2542D', fillColor: '#F2542D', fillOpacity: 1,
-    }).addTo(trackerMap).bindTooltip('Start / Ziel');
-    trackerMap.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
-  }
-
-  if (trackerMapEl && window.L){
-    trackerMap = L.map('tracker-map-real', { zoomControl: true, scrollWheelZoom: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
-    }).addTo(trackerMap);
-
-    drawRoute(routeCoords);
-
-    // Leaflet misst die Containergröße einmalig beim Erstellen. Falls sich das Layout
-    // danach noch verändert (Schriftarten, Grid-Höhe etc.), verschieben sich Kacheln
-    // und Marker relativ zueinander. invalidateSize() behebt das zuverlässig.
-    const fixTrackerMapSize = () => {
-      trackerMap.invalidateSize();
-      trackerMap.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
-    };
-    setTimeout(fixTrackerMapSize, 200);
-    setTimeout(fixTrackerMapSize, 800);
-    window.addEventListener('load', fixTrackerMapSize);
-    window.addEventListener('resize', () => trackerMap.invalidateSize());
-
-    runnerData.forEach(r => {
-      const marker = L.circleMarker(pointAtFraction(r.progress), {
-        radius: 6, color: r.color, fillColor: r.color, fillOpacity: 0.9, weight: 1,
-      }).addTo(trackerMap);
-      marker.bindTooltip(r.name, { direction: 'top', offset: [0, -6] });
-      runnerMarkers[r.id] = marker;
-    });
-
-    // HINWEIS: Es gibt bewusst keine Bewegungs-Animation mehr für Läufer:innen-
-    // Punkte -- ohne echten GPS-Tracking-Anbieter gäbe es dafür keine echten
-    // Positionen. Sobald ein Anbieter angebunden ist, können hier echte
-    // Positions-Updates (z. B. per Polling/Websocket) die Marker bewegen.
-
-    /* ---- Routen-Editor: eigene Punkte per Klick setzen ---- */
-    // Werkzeug für Organisator:innen, nicht für Besucher:innen: der Button ist
-    // im Markup versteckt (hidden) und erscheint nur, wenn die Seite mit
-    // ?edit=1 aufgerufen wird (z. B. https://.../?edit=1).
-    let editMode = false;
-    let drawnPoints = [];
-    let draftLine = null;
-    let draftMarkers = [];
-
-    const editToggleBtn = document.getElementById('route-editor-toggle');
-    if (new URLSearchParams(location.search).has('edit')){
-      editToggleBtn?.removeAttribute('hidden');
-    }
-    const editPanel = document.getElementById('route-editor-panel');
-    const editOutput = document.getElementById('route-editor-output');
-    const editUndoBtn = document.getElementById('route-undo');
-    const editClearBtn = document.getElementById('route-clear');
-    const editApplyBtn = document.getElementById('route-apply');
-    const editCopyBtn = document.getElementById('route-copy');
-
-    function renderDraft(){
-      if (draftLine) trackerMap.removeLayer(draftLine);
-      draftMarkers.forEach(m => trackerMap.removeLayer(m));
-      draftMarkers = [];
-
-      if (drawnPoints.length > 1){
-        draftLine = L.polyline(drawnPoints, {
-          color: '#A78BFA', weight: 3, opacity: 0.9, dashArray: '6 6',
-        }).addTo(trackerMap);
-      }
-      drawnPoints.forEach((p, i) => {
-        const m = L.circleMarker(p, {
-          radius: 5, color: '#A78BFA', fillColor: '#A78BFA', fillOpacity: 1, weight: 1,
-        }).addTo(trackerMap).bindTooltip(String(i + 1), { permanent: false });
-        draftMarkers.push(m);
-      });
-
-      editOutput.value = drawnPoints.length
-        ? drawnPoints.map(p => `    [${p[0].toFixed(5)}, ${p[1].toFixed(5)}],`).join('\n')
-        : '';
-    }
-
-    function setEditMode(on){
-      editMode = on;
-      editToggleBtn.classList.toggle('active', on);
-      editToggleBtn.textContent = on ? '✕ Bearbeiten beenden' : '✏ Route selbst einzeichnen';
-      editPanel.classList.toggle('open', on);
-      trackerMap.getContainer().style.cursor = on ? 'crosshair' : '';
-    }
-
-    editToggleBtn?.addEventListener('click', () => setEditMode(!editMode));
-
-    trackerMap.on('click', (e) => {
-      if (!editMode) return;
-      drawnPoints.push([e.latlng.lat, e.latlng.lng]);
-      renderDraft();
-    });
-
-    editUndoBtn?.addEventListener('click', () => {
-      drawnPoints.pop();
-      renderDraft();
-    });
-
-    editClearBtn?.addEventListener('click', () => {
-      drawnPoints = [];
-      renderDraft();
-    });
-
-    editApplyBtn?.addEventListener('click', () => {
-      if (drawnPoints.length < 2){
-        editOutput.value = 'Bitte mindestens 2 Punkte setzen, bevor du übernimmst.';
-        return;
-      }
-      drawRoute(drawnPoints.slice());
-      trackerMap.invalidateSize();
-    });
-
-    editCopyBtn?.addEventListener('click', () => {
-      const text = drawnPoints.map(p => `    [${p[0].toFixed(5)}, ${p[1].toFixed(5)}],`).join('\n');
-      if (navigator.clipboard){
-        navigator.clipboard.writeText(text).catch(() => {});
-      }
-      editOutput.select();
-      try { document.execCommand('copy'); } catch (err) {}
-    });
-  }
-
-  function selectRunner(id){
-    Object.entries(runnerMarkers).forEach(([mid, marker]) => {
-      const isSel = mid === id;
-      marker.setStyle({ radius: isSel ? 11 : 6, weight: isSel ? 3 : 1 });
-      if (isSel && trackerMap){
-        marker.openTooltip();
-        trackerMap.flyTo(marker.getLatLng(), Math.max(trackerMap.getZoom(), 16), { duration: 0.6 });
-      }
-    });
-  }
 
   const runnerListEl = document.getElementById('runner-list');
   const runnerEmptyEl = document.getElementById('runner-empty');
@@ -2389,7 +1972,6 @@
       li.addEventListener('click', () => {
         runnerListEl.querySelectorAll('.runner-row.selected').forEach(x => x.classList.remove('selected'));
         li.classList.add('selected');
-        selectRunner(r.id);
       });
       runnerListEl.appendChild(li);
     });
@@ -2397,11 +1979,9 @@
   renderRunnerList();
 
   // Füllt die Läufer:innen-Liste mit den echten Namen/Runden/Kilometern aus
-  // /api/live, sobald mindestens eine Anmeldung vorliegt. Positionen auf der
-  // Karte bleiben leer, bis ein echter GPS-Tracking-Anbieter angebunden ist
-  // (siehe Hinweis im "integration-note"-Kasten).
+  // /api/live, sobald mindestens eine Anmeldung vorliegt. Die Runden selbst
+  // kommen aus den QR-Scans am Start/Ziel (siehe /scan.html).
   const trackerActiveCountEl = document.getElementById('tracker-active-count');
-  const integrationNoteEl = document.getElementById('integration-note');
   function applyRealRunners(leaderboard, totalRunners){
     runnerData = leaderboard.map((r, i) => ({
       id: r.id, name: r.name, laps: r.laps, km: r.km,
@@ -2412,11 +1992,6 @@
     if (trackerActiveCountEl){
       trackerActiveCountEl.textContent = totalRunners.toLocaleString('de-DE') +
         (totalRunners === 1 ? ' Läufer:in angemeldet' : ' Läufer:innen angemeldet');
-    }
-    if (integrationNoteEl){
-      integrationNoteEl.innerHTML = '<strong>Live dabei:</strong> Die Liste links zeigt die ' +
-        'echten Anmeldungen. Positionen auf der Karte erscheinen, sobald ein echter ' +
-        'GPS-Tracking-Anbieter angebunden ist.';
     }
   }
 
@@ -2440,12 +2015,10 @@
   // Ist das Backend nicht erreichbar oder API_BASE_URL leer, läuft stattdessen
   // die Mock-Simulation weiter -- die Seite funktioniert also in beiden Fällen.
   //
-  // HINWEIS: Die Läufer:innen-Liste zeigt bereits die echten Namen/Runden aus
-  // /api/live (siehe applyRealRunners oben). Positionen auf der Karte bleiben
-  // bewusst leer, bis ein echter GPS-Tracking-Anbieter angebunden ist (dessen
-  // Positions-Updates kommen von dort, nicht von diesem Backend). Sag Bescheid,
-  // sobald du einen Anbieter gewählt hast, dann verbinde ich auch die Karte mit
-  // echten, einzelnen Läufer-Positionen.
+  // HINWEIS: Runden entstehen ausschliesslich durch die QR-Scans am Start/Ziel
+  // (/scan.html -> POST /api/scan/lap). Es gibt bewusst kein GPS-Tracking und
+  // keine Positionen auf der Karte -- der Live-Stand zeigt Runden, Kilometer
+  // und den Spendenstand.
 
   let mockLaps = 1472;
   let mockFunds = 28470;
@@ -2454,6 +2027,7 @@
   const fundsAmount = document.getElementById('funds-amount');
   const fundsPendingEl = document.getElementById('funds-pending');
   const badgeLaps = document.getElementById('badge-laps');
+  const badgeKm = document.getElementById('badge-km');
 
   // Zeigt die Summe der noch nicht bestätigten Sponsor-Zusagen an (die Hauptzahl
   // oben zählt nur bestätigte). Nur bei echten Daten und wenn es offene gibt.
@@ -2538,6 +2112,11 @@
       if (typeof data.donationGoal === 'number') donationGoal = data.donationGoal;
       applyLiveStats(data.totalLaps, data.fundsRaised);
       updatePending(data.fundsPending);
+      // Kilometer gesamt: Summe der echten km aus dem Leaderboard.
+      if (badgeKm && Array.isArray(data.leaderboard)){
+        const km = data.leaderboard.reduce((sum, r) => sum + (r.km || 0), 0);
+        badgeKm.textContent = km.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+      }
       if (runnersEl && typeof data.totalRunners === 'number'){
         runnersEl.textContent = data.totalRunners.toLocaleString('de-DE');
       }
