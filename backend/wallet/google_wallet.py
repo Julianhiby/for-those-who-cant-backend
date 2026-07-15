@@ -47,7 +47,6 @@ def build_generic_object(runner) -> dict:
         },
         "textModulesData": [
             {"header": "STARTNUMMER", "body": str(runner.bib_number or "—")},
-            {"header": "ICH LAUFE FÜR", "body": runner.dedication_name or "wird zugeteilt"},
         ],
         "barcode": {"type": "QR_CODE", "value": runner.id},
         "hexBackgroundColor": "#100E1A",

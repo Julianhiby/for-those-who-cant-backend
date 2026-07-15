@@ -48,7 +48,6 @@ def render_ticket_html(runner) -> str:
     name = escape(runner.name)
     bib = escape(str(runner.bib_number or "—"))
     fmt = "Solo" if runner.type == "solo" else f"Team: {escape(runner.team_name or '')}"
-    dedication = escape(runner.dedication_name or "wird beim Check-in zugeteilt")
     event = escape(EVENT_NAME)
 
     return f"""<!doctype html>
@@ -118,7 +117,6 @@ def render_ticket_html(runner) -> str:
       <div class="rows">
         <div class="row bib"><span class="k">Startnummer</span><span class="v">{bib}</span></div>
         <div class="row"><span class="k">Format</span><span class="v">{fmt}</span></div>
-        <div class="row"><span class="k">Ich laufe für</span><span class="v">{dedication}</span></div>
       </div>
     </div>
     <div class="foot">

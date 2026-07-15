@@ -54,9 +54,6 @@ def build_pass_json(runner) -> dict:
                 {"key": "type", "label": "FORMAT", "value": "Solo" if runner.type == "solo" else "Team"},
                 {"key": "bib", "label": "STARTNUMMER", "value": str(runner.bib_number or "—")},
             ],
-            "auxiliaryFields": [
-                {"key": "dedication", "label": "ICH LAUFE FÜR", "value": runner.dedication_name or "wird zugeteilt"},
-            ],
             "backFields": [
                 {"key": "info", "label": "Info", "value": "Zeig diesen Pass beim Check-in am Start-/Zielbereich vor."}
             ],

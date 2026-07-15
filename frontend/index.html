@@ -538,20 +538,6 @@
   }
   .dedication-copy p{ color: var(--paper-dim); margin-bottom: 16px; }
   .dedication-copy strong{ color: var(--paper); font-weight: 600; }
-  .dedication-bib{
-    margin-top: 24px;
-    display:inline-flex;
-    align-items:center;
-    gap: 12px;
-    background: transparent;
-    border: 1px dashed var(--line-soft);
-    border-radius: 4px;
-    padding: 14px 20px;
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    color: var(--paper-dim);
-  }
-  .dedication-bib strong{ color: var(--hivis); }
 
   /* ---------- STRECKE ---------- */
   .course{ background: transparent; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
@@ -1526,17 +1512,15 @@
       <div class="eyebrow">Für wen du läufst</div>
       <h2 style="font-size:clamp(1.7rem,3.4vw,2.3rem); margin-bottom:16px;">Du läufst nicht nur für dich.</h2>
       <p>
-        Jede:r Läufer:in bekommt vor dem Start eine reale Person zugeteilt, für die sie oder er
-        läuft — jemanden, der oder die selbst aus gesundheitlichen oder anderen Gründen nicht
-        laufen kann. Diesen Namen trägst du sichtbar auf deiner Startnummer, die ganze Nacht über.
+        Der komplette Erlös dieses Laufs geht an
+        <strong id="org-name" style="color:var(--hivis);">die Partner-Organisation (geben wir in Kürze bekannt)</strong>.
+        Über deine Sponsor:innen wird jede gelaufene Runde zu einer echten Spende an diese Organisation.
       </p>
       <p>
-        So wird aus 24 Stunden auf der Strecke mehr als ein sportliches Ziel: Jede Runde ist dann
-        <strong>für jemanden</strong> gelaufen — nicht nur für die eigene Bestzeit.
+        So wird aus 24 Stunden auf der Strecke mehr als ein sportliches Ziel: Jede Runde ist
+        <strong>für andere</strong> gelaufen — für Menschen, die selbst aus gesundheitlichen,
+        wirtschaftlichen oder anderen Gründen nicht laufen können.
       </p>
-      <div class="dedication-bib">
-        ⦿ Startnummer: <strong>„Ich laufe für …"</strong> — Name wird bei der Anmeldung zugeteilt
-      </div>
     </div>
   </div>
 </section>
@@ -1759,10 +1743,6 @@
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false"><span>Muss ich eine eigene Stirnlampe mitbringen?</span><span class="plus" aria-hidden="true">+</span></button>
         <div class="faq-a"><div class="faq-a-inner">Ja. Die Strecke ist nicht beleuchtet, daher ist eine eigene Stirnlampe inklusive Ersatzbatterien für die Nachtstunden Pflicht. Ohne funktionierende Lampe ist ein Start auf der Strecke nach Einbruch der Dunkelheit nicht möglich.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false"><span>Was hat es mit dem Namen auf der Startnummer auf sich?</span><span class="plus" aria-hidden="true">+</span></button>
-        <div class="faq-a"><div class="faq-a-inner">Jede:r Läufer:in bekommt bei der Anmeldung eine reale Person zugeteilt, die selbst nicht laufen kann. Ihr Name steht während des ganzen Rennens sichtbar auf deiner Startnummer — du läufst dann jede Runde ganz konkret für sie.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false"><span>Wohin gehen die Spenden genau?</span><span class="plus" aria-hidden="true">+</span></button>
@@ -2614,7 +2594,7 @@
   if (!reduceMotion && 'IntersectionObserver' in window){
     const sel = [
       '.section-head', '.why-quote', '.why-copy', '.impact-item', '.format-card',
-      '.dedication-verse', '.dedication-copy', '.dedication-bib', '.course-map',
+      '.dedication-verse', '.dedication-copy', '.course-map',
       '.course-facts .fact', '.packlist-toggle', '.tracker-panel', '.verse-inner', '.faq-item',
       '.footer-brand', '.footer-col'
     ].join(', ');
