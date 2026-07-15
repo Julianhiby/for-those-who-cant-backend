@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runden-Scan-Station — For Those Who Can't</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/assets/favicon.ico">
+
+<!-- Schriften selbst gehostet (DSGVO) -->
+<link rel="stylesheet" href="/assets/fonts/fonts.css">
+<!-- QR-Decoder, lokal gehostet (kein externer Request) -->
+<script src="/assets/jsQR.js"></script>
+
+<style>
+  :root{
+    --ink:#100E1A; --line:#2C2640; --paper:#EDE8DD; --paper-dim:#ADA3BE;
+    --hivis:#E7B23E; --ember:#F2542D; --ok:#4ade80;
+    --display:'Oswald',sans-serif; --body:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--ink);color:var(--paper);font-family:var(--body);line-height:1.6;}
+  .wrap{max-width:520px;margin:0 auto;padding:28px 20px 80px;}
+  .eyebrow{font-family:var(--mono);font-size:0.7rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--hivis);margin-bottom:8px;}
+  h1{font-family:var(--display);text-transform:uppercase;font-size:clamp(1.5rem,5vw,2rem);line-height:1.05;margin-bottom:20px;}
+  .back{display:inline-block;font-family:var(--mono);font-size:0.78rem;color:var(--paper-dim);text-decoration:none;margin-bottom:22px;}
+  .back:hover{color:var(--hivis);}
+
+  label{display:block;font-family:var(--mono);font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase;color:var(--paper-dim);margin-bottom:8px;}
+  input{width:100%;background:transparent;border:1px solid var(--line);color:var(--paper);padding:13px 14px;border-radius:6px;font-size:1rem;font-family:var(--body);}
+  input:focus{outline:none;border-color:var(--hivis);}
+  .btn{background:var(--hivis);color:var(--ink);border:none;border-radius:999px;font-family:var(--mono);font-weight:700;font-size:0.9rem;padding:14px 26px;cursor:pointer;width:100%;margin-top:14px;}
+  .btn:disabled{opacity:0.5;cursor:default;}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--paper-dim);}
+
+  .card{border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:20px;}
+  #video-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;margin-bottom:14px;display:none;}
+  #video{width:100%;height:100%;object-fit:cover;display:block;}
+  .reticle{position:absolute;inset:16%;border:3px solid rgba(231,178,62,0.85);border-radius:16px;pointer-events:none;}
+  #canvas{display:none;}
+
+  .result{border-radius:12px;padding:20px;margin-bottom:16px;display:none;text-align:center;}
+  .result.show{display:block;}
+  .result.ok{background:rgba(74,222,128,0.10);border:1px solid var(--ok);}
+  .result.err{background:rgba(242,84,45,0.10);border:1px solid var(--ember);}
+  .result .big{font-family:var(--display);font-size:1.6rem;line-height:1.1;margin:4px 0;}
+  .result .sub{font-family:var(--mono);font-size:0.82rem;color:var(--paper-dim);}
+  .result.ok .big{color:var(--ok);}
+  .result.err .big{color:var(--ember);font-size:1.15rem;}
+
+  .tally{font-family:var(--mono);font-size:0.8rem;color:var(--paper-dim);text-align:center;margin-top:10px;}
+  .hint{font-family:var(--mono);font-size:0.72rem;color:var(--paper-dim);margin-top:10px;line-height:1.5;}
+  details{margin-top:18px;}
+  summary{font-family:var(--mono);font-size:0.78rem;color:var(--paper-dim);cursor:pointer;}
+  details[open] summary{color:var(--hivis);margin-bottom:12px;}
+  .row{display:flex;gap:10px;}
+  .row input{flex:1;}
+  .row .btn{width:auto;margin-top:0;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Startseite</a>
+  <div class="eyebrow">Nur für Helfer:innen</div>
+  <h1>Runden-Scan-Station</h1>
+
+  <!-- Schritt 1: Passwort -->
+  <div class="card" id="gate">
+    <label for="token">Scan-Passwort</label>
+    <input type="password" id="token" placeholder="SCAN_TOKEN" autocomplete="off" inputmode="text">
+    <button class="btn" id="gate-btn">Weiter</button>
+    <div class="hint" id="gate-hint"></div>
+  </div>
+
+  <!-- Schritt 2: Scannen -->
+  <div id="scanner" style="display:none;">
+    <div class="result" id="result"></div>
+
+    <div id="video-wrap">
+      <video id="video" playsinline muted></video>
+      <div class="reticle"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <button class="btn" id="cam-btn">📷 Kamera starten &amp; scannen</button>
+    <div class="tally" id="tally"></div>
+    <div class="hint">Halte das QR-Startticket der Läufer:in in den Rahmen. Nach jedem
+      Treffer zählt die Runde automatisch — kurz warten, dann die nächste Person.</div>
+
+    <details>
+      <summary>Kein Scan möglich? Startnummer eingeben</summary>
+      <div class="row">
+        <input type="number" id="bib" min="1" placeholder="Startnummer" inputmode="numeric">
+        <button class="btn" id="bib-btn">+1 Runde</button>
+      </div>
+      <div class="hint">Nutze das nur, wenn ein QR-Code beschädigt ist oder fehlt.</div>
+    </details>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let token = '';
+  let stream = null, scanning = false, rafId = null;
+  const cooldown = new Map();        // runner_id -> timestamp bis wann ignorieren
+  const COOLDOWN_MS = 6000;
+  let counted = 0;
+
+  // ---- Ton + Vibration als Feedback ----
+  function beep(ok){
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.frequency.value = ok ? 880 : 220;
+      g.gain.value = 0.12;
+      osc.start(); osc.stop(ctx.currentTime + 0.14);
+    } catch(e){}
+    if (navigator.vibrate) navigator.vibrate(ok ? 60 : [40,40,40]);
+  }
+
+  function showResult(kind, big, sub){
+    const el = $('result');
+    el.className = 'result show ' + kind;
+    el.innerHTML = '<div class="big">' + big + '</div>' +
+      (sub ? '<div class="sub">' + sub + '</div>' : '');
+  }
+
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // ---- Runde an den Server melden ----
+  async function countLap(body){
+    try {
+      const res = await fetch('/api/scan/lap', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Scan-Token':token},
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok){
+        counted++;
+        beep(true);
+        showResult('ok', '✓ Startnummer ' + esc(data.bib_number),
+          esc(data.name) + ' · Runde ' + esc(data.laps) + ' gezählt');
+        $('tally').textContent = 'In dieser Sitzung gezählt: ' + counted;
+        return data.runner_id || null;
+      }
+      beep(false);
+      if (res.status === 409) showResult('err', 'Schon gezählt', esc(data.detail || ''));
+      else if (res.status === 404) showResult('err', 'Unbekanntes Ticket', 'Kein:e Läufer:in gefunden.');
+      else if (res.status === 401 || res.status === 403){
+        showResult('err', 'Passwort ungültig', 'Bitte neu anmelden.');
+        stopScan(); $('scanner').style.display='none'; $('gate').style.display='block';
+      } else showResult('err', 'Fehler ' + res.status, esc(data.detail || ''));
+    } catch(e){
+      beep(false);
+      showResult('err', 'Keine Verbindung', 'Nochmal versuchen.');
+    }
+    return null;
+  }
+
+  // ---- QR-Scan-Schleife ----
+  function tick(){
+    if (!scanning) return;
+    const v = $('video'), c = $('canvas');
+    if (v.readyState === v.HAVE_ENOUGH_DATA){
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const code = (typeof jsQR === 'function') ? jsQR(img.data, img.width, img.height) : null;
+      if (code && code.data){
+        handleDecoded(code.data);
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function handleDecoded(text){
+    // QR kodiert die Ticket-URL: .../api/ticket/<id>
+    const m = text.match(/\/api\/ticket\/([0-9a-f]+)/i);
+    if (!m){
+      showResult('err', 'Kein Startticket', 'Dieser QR-Code gehört nicht zum Lauf.');
+      beep(false);
+      return;
+    }
+    const id = m[1];
+    const now = Date.now();
+    if (cooldown.get(id) && cooldown.get(id) > now){
+      showResult('ok', 'Gerade gezählt', 'Bitte die nächste Person scannen.');
+      return;
+    }
+    cooldown.set(id, now + COOLDOWN_MS);   // sofort sperren (Kamera feuert viele Frames)
+    countLap({runner_id: id});
+  }
+
+  async function startScan(){
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }, audio: false,
+      });
+      const v = $('video');
+      v.srcObject = stream; await v.play();
+      $('video-wrap').style.display = 'block';
+      $('cam-btn').textContent = '⏸ Scannen pausieren';
+      scanning = true; tick();
+    } catch(e){
+      showResult('err', 'Kamera nicht verfügbar',
+        'Bitte Kamerazugriff erlauben (und HTTPS/localhost verwenden).');
+    }
+  }
+
+  function stopScan(){
+    scanning = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    $('video-wrap').style.display = 'none';
+    $('cam-btn').textContent = '📷 Kamera starten &amp; scannen';
+  }
+
+  // ---- UI-Verdrahtung ----
+  $('gate-btn').addEventListener('click', () => {
+    const t = $('token').value.trim();
+    if (!t){ $('gate-hint').textContent = 'Bitte das Scan-Passwort eingeben.'; return; }
+    token = t;
+    try { sessionStorage.setItem('ftwc_scan_token', t); } catch(e){}
+    $('gate').style.display = 'none';
+    $('scanner').style.display = 'block';
+  });
+  $('token').addEventListener('keydown', e => { if (e.key === 'Enter') $('gate-btn').click(); });
+
+  $('cam-btn').addEventListener('click', () => { scanning ? stopScan() : startScan(); });
+
+  $('bib-btn').addEventListener('click', async () => {
+    const bib = parseInt($('bib').value, 10);
+    if (!bib){ showResult('err', 'Startnummer fehlt', 'Bitte eine Zahl eingeben.'); return; }
+    await countLap({ bib_number: bib });
+    $('bib').value = '';
+  });
+  $('bib').addEventListener('keydown', e => { if (e.key === 'Enter') $('bib-btn').click(); });
+
+  // Token aus der Sitzung wiederherstellen (bequem bei Reload)
+  try {
+    const saved = sessionStorage.getItem('ftwc_scan_token');
+    if (saved){ token = saved; $('gate').style.display='none'; $('scanner').style.display='block'; }
+  } catch(e){}
+})();
+</script>
+</body>
+</html>

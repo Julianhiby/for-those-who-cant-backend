@@ -34,6 +34,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import inspect as sa_inspect, text as sa_text
 from sqlmodel import SQLModel, Session, create_engine, select
 
+import config
 from config import (
     DATABASE_URL, DATABASE_IS_SQLITE, LAP_DISTANCE_KM, DONATION_GOAL, PUBLIC_BASE_URL,
 )
@@ -351,6 +352,69 @@ def webhook_lap(payload: LapWebhookIn):
 
 
 # --------------------------------------------------------------------------
+# Runden-Scan-Station (/scan.html): Helfer:innen scannen am Ziel das QR-Ticket
+# der Läufer:in -> +1 Runde. Geschützt über SCAN_TOKEN (getrennt vom ADMIN_TOKEN,
+# damit Helfer:innen nichts löschen können).
+# --------------------------------------------------------------------------
+
+def _require_scan(x_scan_token: str) -> None:
+    """Wirft 403/401, wenn kein bzw. ein falsches Scan-Passwort vorliegt.
+    Akzeptiert SCAN_TOKEN und (bequemlichkeitshalber) ADMIN_TOKEN."""
+    allowed = [t for t in (config.SCAN_TOKEN, config.ADMIN_TOKEN) if t]
+    if not allowed:
+        raise HTTPException(403, "Scan-Funktion ist nicht konfiguriert (SCAN_TOKEN fehlt).")
+    given = x_scan_token or ""
+    if not any(secrets.compare_digest(given, t) for t in allowed):
+        raise HTTPException(401, "Falsches Scan-Passwort.")
+
+
+class ScanIn(BaseModel):
+    runner_id: Optional[str] = None
+    bib_number: Optional[int] = None  # Startnummer -- Fallback, falls ein QR defekt ist
+
+
+@app.post("/api/scan/lap")
+def scan_lap(payload: ScanIn, x_scan_token: str = Header(default="")):
+    _require_scan(x_scan_token)
+    if not payload.runner_id and payload.bib_number is None:
+        raise HTTPException(422, "runner_id oder bib_number erforderlich.")
+
+    with Session(engine) as session:
+        if payload.runner_id:
+            runner = session.get(Runner, payload.runner_id)
+        else:
+            runner = session.exec(
+                select(Runner).where(Runner.bib_number == payload.bib_number)
+            ).first()
+        if not runner:
+            raise HTTPException(404, "Kein:e Läufer:in zu diesem Ticket/dieser Startnummer gefunden.")
+
+        laps = session.exec(
+            select(LapEvent).where(LapEvent.runner_id == runner.id)
+        ).all()
+
+        # Doppelscan-Schutz: liegt die letzte Runde zu kurz zurück -> ablehnen.
+        min_gap = config.LAP_MIN_INTERVAL_SECONDS
+        if laps and min_gap > 0:
+            last = max(lap.recorded_at for lap in laps)
+            if (datetime.utcnow() - last).total_seconds() < min_gap:
+                raise HTTPException(
+                    409,
+                    f"Startnummer {runner.bib_number} wurde gerade eben schon gezählt.",
+                )
+
+        session.add(LapEvent(runner_id=runner.id, lap_number=len(laps) + 1))
+        session.commit()
+        return {
+            "ok": True,
+            "runner_id": runner.id,
+            "bib_number": runner.bib_number,
+            "name": _runner_display_name(runner),
+            "laps": len(laps) + 1,
+        }
+
+
+# --------------------------------------------------------------------------
 # Live-Daten für die Website (ersetzt die Mock-Daten in fetchLiveData())
 # --------------------------------------------------------------------------
 
@@ -628,6 +692,7 @@ _ADMIN_HTML = """<!doctype html>
 </style></head><body>
 <div class="wrap">
   <h1>Admin · For Those Who Can't</h1>
+  <p style="margin:-12px 0 20px;"><a href="/scan.html" style="color:#E7B23E;">🎯 Runden-Scan-Station öffnen</a></p>
 
   <div class="card">
     <label for="token">Admin-Passwort</label>

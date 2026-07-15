@@ -129,10 +129,27 @@ So testest du den kompletten Ablauf lokal:
 | POST | `/api/register` | Neue Anmeldung (Solo/Team + Sponsoren) |
 | POST | `/api/runners/{id}/sponsors` | Sponsor nachträglich hinzufügen |
 | POST | `/api/webhook/lap` | Vom GPS-Anbieter aufgerufen, wenn eine Runde fertig ist |
+| POST | `/api/scan/lap` | Runde per QR-Scan zählen (Scan-Station, `X-Scan-Token`) |
 | GET | `/api/live` | Aggregierte Live-Daten (Leaderboard, Spendenstand) |
 | GET | `/api/wallet/apple/{id}` | `.pkpass`-Datei zum Download |
 | GET | `/api/wallet/google/{id}` | Weiterleitung zum Google-Wallet-Link |
 | GET | `/api/health` | Statusprüfung |
+
+## Runden-Scan-Station (`/scan.html`)
+
+Am Lauftag zählen Helfer:innen die Runden per QR-Scan — es braucht **keine
+GPS-Hardware**: Jede:r Läufer:in hat schon ein QR-Startticket, das am Ziel
+gescannt wird → +1 Runde, und der Live-Spendenstand steigt automatisch.
+
+1. `SCAN_TOKEN` setzen (lokal in `.env`, in Produktion bei Render). Bewusst
+   **getrennt vom `ADMIN_TOKEN`** — Helfer:innen können damit nur zählen, nichts
+   löschen. (Der `ADMIN_TOKEN` funktioniert zusätzlich auch zum Scannen.)
+2. Auf dem Helfer-Handy `/scan.html` öffnen (Link auch auf der Admin-Seite),
+   Scan-Passwort eingeben, Kamera erlauben.
+3. QR-Ticket in den Rahmen halten → Bestätigung mit Startnummer, Name, Rundenzahl
+   (Ton + Vibration). Ein **Doppelscan-Schutz** (`LAP_MIN_SECONDS`, Standard 20 s)
+   verhindert versehentliches Doppelzählen. Für beschädigte QRs gibt es ein
+   manuelles Startnummern-Feld. Der QR-Decoder (jsQR) ist lokal gehostet (DSGVO).
 
 ## Konfiguration
 

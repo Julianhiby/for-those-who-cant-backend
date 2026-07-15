@@ -22,6 +22,8 @@ if _TMP_DB.exists():
     _TMP_DB.unlink()
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DB.as_posix()}"
 os.environ["ADMIN_TOKEN"] = "test-admin-token"
+os.environ["SCAN_TOKEN"] = "test-scan-token"
+os.environ["LAP_MIN_SECONDS"] = "0"       # Doppelscan-Guard in Tests aus
 os.environ.pop("RESEND_API_KEY", None)   # sicher: kein echter Mailversand
 os.environ.pop("SMTP_HOST", None)
 
@@ -74,3 +76,8 @@ def client():
 @pytest.fixture
 def admin_headers():
     return {"X-Admin-Token": ADMIN_TOKEN}
+
+
+@pytest.fixture
+def scan_headers():
+    return {"X-Scan-Token": "test-scan-token"}

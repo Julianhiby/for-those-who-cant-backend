@@ -190,6 +190,65 @@ def test_webhook_unknown_runner_404(client):
 
 
 # --------------------------------------------------------------------------
+# Runden-Scan-Station (/api/scan/lap)
+# --------------------------------------------------------------------------
+
+def test_scan_requires_token(client, scan_headers):
+    data = _register(client)
+    assert client.post("/api/scan/lap", json={"runner_id": data["id"]}).status_code == 401
+    assert client.post(
+        "/api/scan/lap", json={"runner_id": data["id"]},
+        headers={"X-Scan-Token": "falsch"},
+    ).status_code == 401
+    assert client.post(
+        "/api/scan/lap", json={"runner_id": data["id"]}, headers=scan_headers
+    ).status_code == 200
+
+
+def test_scan_unknown_runner_and_missing_ref(client, scan_headers):
+    assert client.post(
+        "/api/scan/lap", json={"runner_id": "gibtsnicht"}, headers=scan_headers
+    ).status_code == 404
+    assert client.post(
+        "/api/scan/lap", json={"bib_number": 999}, headers=scan_headers
+    ).status_code == 404
+    assert client.post(
+        "/api/scan/lap", json={}, headers=scan_headers
+    ).status_code == 422
+
+
+def test_scan_by_id_increments_laps(client, scan_headers):
+    data = _register(client)
+    rid = data["id"]
+    r1 = client.post("/api/scan/lap", json={"runner_id": rid}, headers=scan_headers).json()
+    assert r1["laps"] == 1 and r1["bib_number"] == data["bib_number"]
+    r2 = client.post("/api/scan/lap", json={"runner_id": rid}, headers=scan_headers).json()
+    assert r2["laps"] == 2
+    assert client.get("/api/live").json()["totalLaps"] == 2
+
+
+def test_scan_by_bib_number(client, scan_headers):
+    data = _register(client)
+    res = client.post(
+        "/api/scan/lap", json={"bib_number": data["bib_number"]}, headers=scan_headers
+    )
+    assert res.status_code == 200 and res.json()["laps"] == 1
+
+
+def test_scan_double_scan_guard(client, scan_headers, monkeypatch):
+    import app as app_module
+    # Guard aktivieren -> zweiter sofortiger Scan wird abgelehnt.
+    monkeypatch.setattr(app_module.config, "LAP_MIN_INTERVAL_SECONDS", 60)
+    data = _register(client)
+    rid = data["id"]
+    assert client.post("/api/scan/lap", json={"runner_id": rid}, headers=scan_headers).status_code == 200
+    dup = client.post("/api/scan/lap", json={"runner_id": rid}, headers=scan_headers)
+    assert dup.status_code == 409
+    # Es blieb bei genau einer Runde.
+    assert client.get("/api/live").json()["totalLaps"] == 1
+
+
+# --------------------------------------------------------------------------
 # Admin: Schutz, Teilnehmerliste, CSV, Reset
 # --------------------------------------------------------------------------
 
