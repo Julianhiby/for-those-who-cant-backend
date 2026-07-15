@@ -54,6 +54,16 @@ SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "production")
 # böswillig die Daten löschen.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
+# Separates Passwort für die Runden-Scan-Station (/scan.html -> /api/scan/lap).
+# Bewusst getrennt vom ADMIN_TOKEN: Streckenposten-Helfer:innen können damit NUR
+# Runden zählen, aber nichts löschen. Leer = Scan-Funktion deaktiviert.
+SCAN_TOKEN = os.getenv("SCAN_TOKEN", "")
+
+# Mindestabstand (Sekunden) zwischen zwei gezählten Runden derselben Startnummer
+# -- schützt vor versehentlichem Doppel-Scannen. Eine echte Runde dauert mehrere
+# Minuten, 20 s weist also keine legitime Runde ab.
+LAP_MIN_INTERVAL_SECONDS = int(os.getenv("LAP_MIN_SECONDS", "20"))
+
 # Datenbank. Standard: lokale SQLite-Datei. Für Produktion z. B. Neon/Postgres:
 #   postgresql://user:pass@host/dbname?sslmode=require
 DATABASE_URL = os.getenv(
